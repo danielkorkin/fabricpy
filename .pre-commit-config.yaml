@@ -1,8 +1,0 @@
-repos:
-    - repo: https://github.com/charliermarsh/ruff-pre-commit
-      rev: v0.9.1 # Use the latest Ruff version
-      hooks:
-          - id: ruff
-            name: ruff lint and format
-            args: [ --fix, --extend-select, I, --show-fixes]
-          - id: ruff-format

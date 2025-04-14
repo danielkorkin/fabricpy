@@ -1,9 +1,0 @@
-fix = true
-indent-width = 4
-
-[lint]
-ignore = ["F841"]
-
-[format]
-quote-style = "double"
-indent-style = "tab"
