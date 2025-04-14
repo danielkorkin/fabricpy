@@ -7,6 +7,7 @@ This script initializes a Fabric mod project for Minecraft v1.21.5 by doing the 
    - CustomItem.java: A custom item class that plays a sound when used.
    - TutorialItems.java: A registry helper class that registers the custom item using the new 1.21.2+ method.
 4. Patches the mod initializer (ExampleMod.java) to force the registration of the custom item.
+5. Optionally copies a texture file (PNG) from a specified location into the mod’s assets and creates default model JSON files.
 Note: This updated code uses Identifier.of(...) instead of new Identifier(...),
 and uses Registries.ITEM instead of Registry.ITEM.
 The custom item is registered with the mod ID "mycustommod", so the in-game /give command is:
@@ -17,6 +18,7 @@ import os
 import json
 import subprocess
 import re
+import shutil
 
 
 def clone_repository(repo_url, target_dir):
@@ -65,7 +67,7 @@ def create_item_files(project_dir, package_path):
     print(f"Created/verified Java package directory: {full_package_dir}\n")
 
     # Create TutorialItems.java using "mycustommod" as the mod id.
-    # Note: We now attach the registry key to the settings.
+    # Attach the registry key to the settings.
     tutorial_items_content = f"""\
 package {package_path};
 
@@ -85,11 +87,8 @@ public final class TutorialItems {{
     public static final Item CUSTOM_ITEM = register("custom_item", CustomItem::new, new Item.Settings().maxCount(16));
 
     public static Item register(String path, Function<Item.Settings, Item> factory, Item.Settings settings) {{
-        // Create a registry key for the item using the new method (since 1.21.2)
         final RegistryKey<Item> registryKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of("mycustommod", path));
-        // Attach the registry key to the settings so the item id is set.
         settings = settings.registryKey(registryKey);
-        // Register the item in the registry and return it.
         return Registry.register(Registries.ITEM, Identifier.of("mycustommod", path), factory.apply(settings));
     }}
 
@@ -136,7 +135,7 @@ public class CustomItem extends Item {{
 
 def update_mod_initializer(project_dir):
     """
-    Updates the mod initializer file so that it calls TutorialItems.initialize() within the onInitialize() method.
+    Updates the mod initializer file so that it calls TutorialItems.initialize() within onInitialize().
     Assumes that the main mod class is located at:
          src/main/java/com/example/ExampleMod.java
     """
@@ -152,23 +151,18 @@ def update_mod_initializer(project_dir):
     with open(mod_init_path, "r", encoding="utf-8") as file:
         content = file.read()
 
-    # If the call is already there, do nothing.
     if "TutorialItems.initialize()" in content:
         print(
             "Mod initializer already contains call to TutorialItems.initialize(). Skipping update.\n"
         )
         return
 
-    # Insert the call after the opening brace of onInitialize().
     pattern = r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)"
 
     def replacer(match):
-        indent = "    "  # Standard indent (4 spaces)
         return (
             match.group(0)
-            + "\n"
-            + indent
-            + "com.example.mycustommod.items.TutorialItems.initialize();"
+            + "\n    com.example.mycustommod.items.TutorialItems.initialize();"
         )
 
     new_content, count = re.subn(pattern, replacer, content, count=1)
@@ -178,6 +172,54 @@ def update_mod_initializer(project_dir):
         print("Mod initializer updated successfully.\n")
     else:
         print("Could not locate onInitialize() method properly; skipping update.\n")
+
+
+def copy_texture_and_generate_models(project_dir, mod_id, texture_source):
+    """
+    Copies the texture file from texture_source into the mod's assets directory,
+    and generates default model JSON files so that the custom item uses the texture.
+    The texture is copied to:
+       src/main/resources/assets/<mod_id>/textures/item/custom_item.png
+    The item model JSON is created at:
+       src/main/resources/assets/<mod_id>/models/item/custom_item.json
+    The item model definition (for 1.21.4+) is created at:
+       src/main/resources/assets/<mod_id>/items/custom_item.json
+    :param project_dir: The root directory of the mod project.
+    :param mod_id: The mod identifier (e.g. "mycustommod")
+    :param texture_source: Path to the texture file on the local filesystem.
+    """
+    # Define target directories.
+    assets_dir = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
+    texture_dir = os.path.join(assets_dir, "textures", "item")
+    model_dir = os.path.join(assets_dir, "models", "item")
+    itemdef_dir = os.path.join(assets_dir, "items")
+
+    for d in (texture_dir, model_dir, itemdef_dir):
+        os.makedirs(d, exist_ok=True)
+
+    # Copy texture file.
+    target_texture_path = os.path.join(texture_dir, "custom_item.png")
+    shutil.copy(texture_source, target_texture_path)
+    print(f"Copied texture file from {texture_source} to {target_texture_path}")
+
+    # Generate the item model JSON.
+    model_json_content = {
+        "parent": "minecraft:item/generated",
+        "textures": {"layer0": f"{mod_id}:item/custom_item"},
+    }
+    target_model_path = os.path.join(model_dir, "custom_item.json")
+    with open(target_model_path, "w", encoding="utf-8") as file:
+        json.dump(model_json_content, file, indent=2)
+    print(f"Created model JSON at {target_model_path}")
+
+    # Generate the item model definition JSON (for 1.21.4+).
+    item_model_def_content = {
+        "model": {"type": "minecraft:model", "model": f"{mod_id}:item/custom_item"}
+    }
+    target_itemdef_path = os.path.join(itemdef_dir, "custom_item.json")
+    with open(target_itemdef_path, "w", encoding="utf-8") as file:
+        json.dump(item_model_def_content, file, indent=2)
+    print(f"Created item model definition JSON at {target_itemdef_path}\n")
 
 
 def main():
@@ -205,6 +247,20 @@ def main():
 
     # Step 4: Update the mod initializer to load custom items.
     update_mod_initializer(target_dir)
+
+    # Step 5: Optionally copy a texture file and generate model JSON files.
+    texture_path = input(
+        "Enter the full path to the texture PNG file for the custom item (or press Enter to skip): "
+    ).strip()
+    if texture_path:
+        if os.path.exists(texture_path):
+            copy_texture_and_generate_models(target_dir, "mycustommod", texture_path)
+        else:
+            print(
+                f"Texture file not found at {texture_path}. Skipping texture copying."
+            )
+    else:
+        print("No texture file provided, skipping texture and model generation.")
 
     print("Fabric mod project has been initialized with basic item creation code.\n")
     print("In Minecraft, run the following command to receive your custom item:")
