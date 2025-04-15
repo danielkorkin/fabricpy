@@ -7,9 +7,8 @@ This script initializes a Fabric mod project for Minecraft v1.21.5 by doing the 
    - CustomItem.java: A custom item class that plays a sound when used.
    - TutorialItems.java: A registry helper class that registers the custom item using the new 1.21.2+ method.
 4. Patches the mod initializer (ExampleMod.java) to force the registration of the custom item.
-5. Optionally copies a texture file (PNG) from a specified location into the mod’s assets and creates default model JSON files.
-Note: This updated code uses Identifier.of(...) instead of new Identifier(...),
-and uses Registries.ITEM instead of Registry.ITEM.
+5. Optionally copies a texture file (PNG) from a specified location into the mod’s assets and generates default item model JSON files.
+6. Updates/creates the language file so that the custom item displays a friendly name (instead of its raw id).
 The custom item is registered with the mod ID "mycustommod", so the in-game /give command is:
     /give @s mycustommod:custom_item
 """
@@ -61,13 +60,10 @@ def create_item_files(project_dir, package_path):
     """
     # Construct the path to the Java source directory.
     java_src_dir = os.path.join(project_dir, "src", "main", "java")
-    # Convert package path into folder structure.
     full_package_dir = os.path.join(java_src_dir, *package_path.split("."))
     os.makedirs(full_package_dir, exist_ok=True)
     print(f"Created/verified Java package directory: {full_package_dir}\n")
 
-    # Create TutorialItems.java using "mycustommod" as the mod id.
-    # Attach the registry key to the settings.
     tutorial_items_content = f"""\
 package {package_path};
 
@@ -100,7 +96,6 @@ public final class TutorialItems {{
         file.write(tutorial_items_content)
     print(f"Created file: {tutorial_items_path}\n")
 
-    # Create CustomItem.java.
     custom_item_content = f"""\
 package {package_path};
 
@@ -150,13 +145,11 @@ def update_mod_initializer(project_dir):
     print(f"Updating mod initializer at {mod_init_path} to register custom items...")
     with open(mod_init_path, "r", encoding="utf-8") as file:
         content = file.read()
-
     if "TutorialItems.initialize()" in content:
         print(
             "Mod initializer already contains call to TutorialItems.initialize(). Skipping update.\n"
         )
         return
-
     pattern = r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)"
 
     def replacer(match):
@@ -188,21 +181,17 @@ def copy_texture_and_generate_models(project_dir, mod_id, texture_source):
     :param mod_id: The mod identifier (e.g. "mycustommod")
     :param texture_source: Path to the texture file on the local filesystem.
     """
-    # Define target directories.
     assets_dir = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
     texture_dir = os.path.join(assets_dir, "textures", "item")
     model_dir = os.path.join(assets_dir, "models", "item")
     itemdef_dir = os.path.join(assets_dir, "items")
-
     for d in (texture_dir, model_dir, itemdef_dir):
         os.makedirs(d, exist_ok=True)
 
-    # Copy texture file.
     target_texture_path = os.path.join(texture_dir, "custom_item.png")
     shutil.copy(texture_source, target_texture_path)
     print(f"Copied texture file from {texture_source} to {target_texture_path}")
 
-    # Generate the item model JSON.
     model_json_content = {
         "parent": "minecraft:item/generated",
         "textures": {"layer0": f"{mod_id}:item/custom_item"},
@@ -210,9 +199,8 @@ def copy_texture_and_generate_models(project_dir, mod_id, texture_source):
     target_model_path = os.path.join(model_dir, "custom_item.json")
     with open(target_model_path, "w", encoding="utf-8") as file:
         json.dump(model_json_content, file, indent=2)
-    print(f"Created model JSON at {target_model_path}")
+    print(f"Created item model JSON at {target_model_path}")
 
-    # Generate the item model definition JSON (for 1.21.4+).
     item_model_def_content = {
         "model": {"type": "minecraft:model", "model": f"{mod_id}:item/custom_item"}
     }
@@ -220,6 +208,36 @@ def copy_texture_and_generate_models(project_dir, mod_id, texture_source):
     with open(target_itemdef_path, "w", encoding="utf-8") as file:
         json.dump(item_model_def_content, file, indent=2)
     print(f"Created item model definition JSON at {target_itemdef_path}\n")
+
+
+def update_item_lang_file(project_dir, mod_id):
+    """
+    Creates or updates the language file so that the custom item shows a proper name.
+    The language file is located at:
+         src/main/resources/assets/<mod_id>/lang/en_us.json
+    Sets a key for the custom item.
+    """
+    lang_dir = os.path.join(
+        project_dir, "src", "main", "resources", "assets", mod_id, "lang"
+    )
+    os.makedirs(lang_dir, exist_ok=True)
+    lang_file = os.path.join(lang_dir, "en_us.json")
+
+    if os.path.exists(lang_file):
+        with open(lang_file, "r", encoding="utf-8") as file:
+            try:
+                lang_data = json.load(file)
+            except json.JSONDecodeError:
+                lang_data = {}
+    else:
+        lang_data = {}
+
+    # Set the friendly name for the custom item.
+    lang_data[f"item.{mod_id}.custom_item"] = "Custom Item"
+
+    with open(lang_file, "w", encoding="utf-8") as file:
+        json.dump(lang_data, file, indent=2)
+    print(f"Updated language file at {lang_file} with custom item translation.\n")
 
 
 def main():
@@ -241,14 +259,14 @@ def main():
     }
     update_mod_metadata(mod_json_path, new_metadata)
 
-    # Step 3: Create Java source files for basic items.
+    # Step 3: Create Java source files for the custom item.
     package_path = "com.example.mycustommod.items"
     create_item_files(target_dir, package_path)
 
     # Step 4: Update the mod initializer to load custom items.
     update_mod_initializer(target_dir)
 
-    # Step 5: Optionally copy a texture file and generate model JSON files.
+    # Step 5: Optionally, copy a texture file and generate model JSON files.
     texture_path = input(
         "Enter the full path to the texture PNG file for the custom item (or press Enter to skip): "
     ).strip()
@@ -261,6 +279,9 @@ def main():
             )
     else:
         print("No texture file provided, skipping texture and model generation.")
+
+    # Step 6: Update the language file so the custom item shows a friendly name.
+    update_item_lang_file(target_dir, "mycustommod")
 
     print("Fabric mod project has been initialized with basic item creation code.\n")
     print("In Minecraft, run the following command to receive your custom item:")
