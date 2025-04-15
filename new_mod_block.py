@@ -5,12 +5,14 @@ It performs the following steps:
 1. Clones the Fabric example mod repository.
 2. Updates the mod metadata in fabric.mod.json.
 3. Creates two Java source files to add a basic custom block:
-   - CustomBlock.java: A custom block class (extending Block).
-   - TutorialBlocks.java: A registry helper class that registers the custom block and its BlockItem.
+   - CustomBlock.java: A simple custom block class.
+   - TutorialBlocks.java: A helper class that registers the custom block and its BlockItem.
 4. Patches the mod initializer (ExampleMod.java) to call TutorialBlocks.initialize().
-5. Optionally, copies a texture (PNG) from a specified directory into the mod’s assets and generates default model JSON and blockstate JSON files for the block.
+5. Optionally, copies a texture file for the block and generates default model JSON and blockstate JSON files.
+   Then prompts for an optional separate inventory icon texture for the block.
+6. Updates/creates a language file so that the block and its item have friendly names.
 The custom block is registered with the mod ID "mycustommod" under the identifier "custom_block".
-In-game you can use the command:
+In-game, use:
     /give @s mycustommod:custom_block
 to obtain its BlockItem.
 """
@@ -45,14 +47,13 @@ def create_block_files(project_dir, package_path):
     Creates Java source files for a custom block.
     Two files are created in the given package (e.g. 'com.example.mycustommod.blocks'):
       - CustomBlock.java: A simple custom block class.
-      - TutorialBlocks.java: A helper class that registers the block and its BlockItem.
+      - TutorialBlocks.java: A helper class that registers the custom block and its BlockItem.
     """
     java_src_dir = os.path.join(project_dir, "src", "main", "java")
     full_package_dir = os.path.join(java_src_dir, *package_path.split("."))
     os.makedirs(full_package_dir, exist_ok=True)
     print(f"Created/verified Java package directory for blocks: {full_package_dir}\n")
 
-    # Create TutorialBlocks.java.
     tutorial_blocks_content = f"""\
 package {package_path};
 
@@ -72,7 +73,6 @@ public final class TutorialBlocks {{
     private TutorialBlocks() {{}}
 
     // Registers a custom block with a BlockItem.
-    // For example, we'll make a custom block that copies the properties of dirt.
     public static final Block CUSTOM_BLOCK = register("custom_block", CustomBlock::new,
             AbstractBlock.Settings.copy(Blocks.DIRT).requiresTool(), true);
 
@@ -97,7 +97,6 @@ public final class TutorialBlocks {{
         file.write(tutorial_blocks_content)
     print(f"Created file: {tutorial_blocks_path}\n")
 
-    # Create CustomBlock.java.
     custom_block_content = f"""\
 package {package_path};
 
@@ -118,7 +117,7 @@ public class CustomBlock extends Block {{
 
 def update_mod_initializer_with_blocks(project_dir):
     """
-    Updates the mod initializer so that it calls TutorialBlocks.initialize() within onInitialize().
+    Updates the mod initializer file so that it calls TutorialBlocks.initialize() within onInitialize().
     Assumes that the main mod class is located at:
          src/main/java/com/example/ExampleMod.java
     """
@@ -127,21 +126,15 @@ def update_mod_initializer_with_blocks(project_dir):
     )
     if not os.path.exists(mod_init_path):
         print(
-            f"Mod initializer file not found at {mod_init_path}, skipping update of mod initializer for blocks."
+            f"Mod initializer file not found at {mod_init_path}, skipping update for blocks."
         )
         return
     print(f"Updating mod initializer at {mod_init_path} to register custom blocks...")
     with open(mod_init_path, "r", encoding="utf-8") as file:
         content = file.read()
-
-    # If the call already exists, do nothing.
     if "TutorialBlocks.initialize()" in content:
-        print(
-            "Mod initializer already contains call to TutorialBlocks.initialize(). Skipping update.\n"
-        )
+        print("Mod initializer already updated for blocks. Skipping.\n")
         return
-
-    # Insert the call after the onInitialize() method's opening brace.
     pattern = r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)"
 
     def replacer(match):
@@ -157,51 +150,138 @@ def update_mod_initializer_with_blocks(project_dir):
         print("Mod initializer updated successfully for blocks.\n")
     else:
         print(
-            "Could not locate onInitialize() method properly in mod initializer; skipping block update.\n"
+            "Could not locate onInitialize() method properly; skipping block update.\n"
         )
 
 
-def copy_block_texture_and_generate_models(project_dir, mod_id, texture_source):
+def copy_block_textures_and_generate_models(project_dir, mod_id, block_texture_source):
     """
-    Copies the texture file from texture_source into the mod's assets directory,
-    and generates default block model JSON and blockstate JSON files so that the custom block uses the texture.
-    The texture is copied to:
-       src/main/resources/assets/<mod_id>/textures/block/custom_block.png
-    The block model JSON is generated at:
-       src/main/resources/assets/<mod_id>/models/block/custom_block.json
-    The blockstate definition is generated at:
-       src/main/resources/assets/<mod_id>/blockstates/custom_block.json
+    Copies the block texture file from block_texture_source into the assets directory,
+    and generates default block model and blockstate JSON files.
+    Also generates an item model JSON for the block's BlockItem.
+    - The block texture is copied to:
+         assets/<mod_id>/textures/block/custom_block.png
+    - The block model JSON is generated at:
+         assets/<mod_id>/models/block/custom_block.json
+    - The blockstate JSON is generated at:
+         assets/<mod_id>/blockstates/custom_block.json
+    - The block item's model JSON is generated at:
+         assets/<mod_id>/models/item/custom_block.json
+      When generating the item model JSON, the script prompts for an optional separate inventory icon texture.
+      If provided, that texture is used; otherwise, the block texture is copied into the item textures as default.
+    Additionally, an item model definition JSON is generated in:
+         assets/<mod_id>/items/custom_block.json
     :param project_dir: The root directory of the mod project.
-    :param mod_id: The mod identifier (e.g. "mycustommod")
-    :param texture_source: Full path to the texture PNG file for the block.
+    :param mod_id: The mod id (e.g. "mycustommod").
+    :param block_texture_source: Full path to the block texture PNG file.
     """
     assets_dir = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
-    texture_dir = os.path.join(assets_dir, "textures", "block")
-    model_dir = os.path.join(assets_dir, "models", "block")
+    # Directories for block assets.
+    block_texture_dir = os.path.join(assets_dir, "textures", "block")
+    block_model_dir = os.path.join(assets_dir, "models", "block")
     blockstate_dir = os.path.join(assets_dir, "blockstates")
-    for d in (texture_dir, model_dir, blockstate_dir):
+    # Directories for item assets.
+    item_texture_dir = os.path.join(assets_dir, "textures", "item")
+    item_model_dir = os.path.join(assets_dir, "models", "item")
+    for d in (
+        block_texture_dir,
+        block_model_dir,
+        blockstate_dir,
+        item_texture_dir,
+        item_model_dir,
+    ):
         os.makedirs(d, exist_ok=True)
 
-    target_texture_path = os.path.join(texture_dir, "custom_block.png")
-    shutil.copy(texture_source, target_texture_path)
-    print(f"Copied block texture from {texture_source} to {target_texture_path}")
+    # Copy the block texture.
+    target_block_texture = os.path.join(block_texture_dir, "custom_block.png")
+    shutil.copy(block_texture_source, target_block_texture)
+    print(f"Copied block texture from {block_texture_source} to {target_block_texture}")
 
-    # Create block model JSON.
-    model_json = {
+    # Generate block model JSON.
+    block_model_json = {
         "parent": "minecraft:block/cube_all",
         "textures": {"all": f"{mod_id}:block/custom_block"},
     }
-    target_model_path = os.path.join(model_dir, "custom_block.json")
-    with open(target_model_path, "w", encoding="utf-8") as file:
-        json.dump(model_json, file, indent=2)
-    print(f"Created block model JSON at {target_model_path}")
+    target_block_model = os.path.join(block_model_dir, "custom_block.json")
+    with open(target_block_model, "w", encoding="utf-8") as file:
+        json.dump(block_model_json, file, indent=2)
+    print(f"Created block model JSON at {target_block_model}")
 
-    # Create blockstate JSON.
+    # Generate blockstate JSON.
     blockstate_json = {"variants": {"": {"model": f"{mod_id}:block/custom_block"}}}
-    target_blockstate_path = os.path.join(blockstate_dir, "custom_block.json")
-    with open(target_blockstate_path, "w", encoding="utf-8") as file:
+    target_blockstate = os.path.join(blockstate_dir, "custom_block.json")
+    with open(target_blockstate, "w", encoding="utf-8") as file:
         json.dump(blockstate_json, file, indent=2)
-    print(f"Created blockstate JSON at {target_blockstate_path}\n")
+    print(f"Created blockstate JSON at {target_blockstate}")
+
+    # Generate the block item's model JSON.
+    # Prompt for a separate inventory icon texture.
+    inv_texture = input(
+        "Enter the full path to a separate block inventory texture PNG file (or press Enter to use block texture): "
+    ).strip()
+    if inv_texture and os.path.exists(inv_texture):
+        target_item_texture = os.path.join(item_texture_dir, "custom_block_icon.png")
+        shutil.copy(inv_texture, target_item_texture)
+        print(
+            f"Copied separate inventory icon texture from {inv_texture} to {target_item_texture}"
+        )
+        item_model_json = {
+            "parent": "minecraft:item/generated",
+            "textures": {"layer0": f"{mod_id}:item/custom_block_icon"},
+        }
+    else:
+        print(
+            "No separate inventory icon provided; using block texture as default for inventory icon."
+        )
+        target_item_texture = os.path.join(item_texture_dir, "custom_block_icon.png")
+        shutil.copy(block_texture_source, target_item_texture)
+        item_model_json = {
+            "parent": "minecraft:item/generated",
+            "textures": {"layer0": f"{mod_id}:item/custom_block_icon"},
+        }
+    target_item_model = os.path.join(item_model_dir, "custom_block.json")
+    with open(target_item_model, "w", encoding="utf-8") as file:
+        json.dump(item_model_json, file, indent=2)
+    print(f"Created block item model JSON at {target_item_model}\n")
+
+    # IMPORTANT: For Minecraft 1.21.4+ an item model definition file is required.
+    item_def_dir = os.path.join(assets_dir, "items")
+    os.makedirs(item_def_dir, exist_ok=True)
+    item_def_json = {"model": {"type": "model", "model": f"{mod_id}:item/custom_block"}}
+    target_item_def = os.path.join(item_def_dir, "custom_block.json")
+    with open(target_item_def, "w", encoding="utf-8") as file:
+        json.dump(item_def_json, file, indent=2)
+    print(f"Created block item model definition JSON at {target_item_def}\n")
+
+
+def update_lang_file(project_dir, mod_id):
+    """
+    Creates or updates the language file so that the custom block has a friendly name.
+    The file is placed at:
+         src/main/resources/assets/<mod_id>/lang/en_us.json
+    and sets keys for both the block and the block item.
+    """
+    lang_dir = os.path.join(
+        project_dir, "src", "main", "resources", "assets", mod_id, "lang"
+    )
+    os.makedirs(lang_dir, exist_ok=True)
+    lang_file = os.path.join(lang_dir, "en_us.json")
+
+    if os.path.exists(lang_file):
+        with open(lang_file, "r", encoding="utf-8") as file:
+            try:
+                lang_data = json.load(file)
+            except json.JSONDecodeError:
+                lang_data = {}
+    else:
+        lang_data = {}
+
+    lang_data[f"block.{mod_id}.custom_block"] = "Custom Block"
+    lang_data[f"item.{mod_id}.custom_block"] = "Custom Block"
+
+    with open(lang_file, "w", encoding="utf-8") as file:
+        json.dump(lang_data, file, indent=2)
+    print(f"Updated language file at {lang_file} with block/item translations.\n")
 
 
 def main():
@@ -230,23 +310,21 @@ def main():
     # Step 4: Update the mod initializer to load custom blocks.
     update_mod_initializer_with_blocks(target_dir)
 
-    # Step 5: Optionally, copy a texture file and generate block model and blockstate JSON files.
+    # Step 5: Optionally, copy a block texture and generate asset JSON files.
     block_texture_path = input(
         "Enter the full path to the texture PNG file for the custom block (or press Enter to skip): "
     ).strip()
-    if block_texture_path:
-        if os.path.exists(block_texture_path):
-            copy_block_texture_and_generate_models(
-                target_dir, "mycustommod", block_texture_path
-            )
-        else:
-            print(
-                f"Texture file not found at {block_texture_path}. Skipping texture copying for block."
-            )
+    if block_texture_path and os.path.exists(block_texture_path):
+        copy_block_textures_and_generate_models(
+            target_dir, "mycustommod", block_texture_path
+        )
     else:
         print(
-            "No block texture file provided, skipping texture and model generation for block."
+            "No block texture provided, skipping texture and model generation for block."
         )
+
+    # Step 6: Update the language file for proper naming.
+    update_lang_file(target_dir, "mycustommod")
 
     print("Fabric mod project has been initialized with basic block creation code.\n")
     print(
