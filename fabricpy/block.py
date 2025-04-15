@@ -25,3 +25,5 @@ class Block:
             if inventory_texture_path is not None
             else block_texture_path
         )
+        # Optional: the creative item group to which the block (as a BlockItem) should belong.
+        self.item_group = None

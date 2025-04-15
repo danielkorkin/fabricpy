@@ -147,6 +147,7 @@ class ModConfig:
         print(f"Created default CustomItem Java file: {custom_item_path}\n")
 
     def generate_tutorial_items_content(self, package_path):
+        # Begin with package and necessary imports.
         lines = []
         lines.append(f"package {package_path};")
         lines.append("")
@@ -157,11 +158,19 @@ class ModConfig:
         lines.append("import net.minecraft.registry.RegistryKeys;")
         lines.append("import net.minecraft.registry.Registries;")
         lines.append("import net.minecraft.item.Item.Settings;")
+        # If any item has an item group, add the following imports.
+        if any(
+            hasattr(item, "item_group") and item.item_group
+            for item in self.registered_items
+        ):
+            lines.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            lines.append("import net.minecraft.item.ItemGroups;")
         lines.append("import java.util.function.Function;")
         lines.append("")
         lines.append("public final class TutorialItems {")
         lines.append("    private TutorialItems() {}")
         lines.append("")
+        # Registration lines
         for item in self.registered_items:
             constant_name = item.id.upper()
             lines.append(
@@ -180,7 +189,23 @@ class ModConfig:
         )
         lines.append("    }")
         lines.append("")
-        lines.append("    public static void initialize() {}")
+        # Build a dictionary of group -> list of item constant names.
+        group_dict = {}
+        for item in self.registered_items:
+            if hasattr(item, "item_group") and item.item_group:
+                group = item.item_group  # e.g. "BUILDING_BLOCKS"
+                group_dict.setdefault(group, []).append(item.id.upper())
+        # Generate the initialize method with item group events.
+        lines.append("    public static void initialize() {")
+        if group_dict:
+            for group, consts in group_dict.items():
+                lines.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{group}).register(entries -> {{"
+                )
+                for const in consts:
+                    lines.append(f"            entries.add({const});")
+                lines.append("        });")
+        lines.append("    }")
         lines.append("}")
         return "\n".join(lines)
 
@@ -334,6 +359,13 @@ public class CustomItem extends Item {{
         lines.append("import net.minecraft.registry.RegistryKey;")
         lines.append("import net.minecraft.registry.RegistryKeys;")
         lines.append("import net.minecraft.registry.Registries;")
+        # If any block has an item group, add these imports.
+        if any(
+            hasattr(block, "item_group") and block.item_group
+            for block in self.registered_blocks
+        ):
+            lines.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            lines.append("import net.minecraft.item.ItemGroups;")
         lines.append("import java.util.function.Function;")
         lines.append("")
         lines.append("public final class TutorialBlocks {")
@@ -341,7 +373,6 @@ public class CustomItem extends Item {{
         lines.append("")
         for block in self.registered_blocks:
             constant_name = block.id.upper()
-            # Using default block settings (copying from Blocks.STONE as a placeholder).
             lines.append(
                 f'    public static final Block {constant_name} = register("{block.id}", CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE).requiresTool(), true);'
             )
@@ -370,7 +401,22 @@ public class CustomItem extends Item {{
         lines.append("        return block;")
         lines.append("    }")
         lines.append("")
-        lines.append("    public static void initialize() {}")
+        # Group block items that specify an item group.
+        group_dict = {}
+        for block in self.registered_blocks:
+            if hasattr(block, "item_group") and block.item_group:
+                group = block.item_group
+                group_dict.setdefault(group, []).append(block.id.upper())
+        lines.append("    public static void initialize() {")
+        if group_dict:
+            for group, consts in group_dict.items():
+                lines.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{group}).register(entries -> {{"
+                )
+                for const in consts:
+                    lines.append(f"            entries.add({const}.asItem());")
+                lines.append("        });")
+        lines.append("    }")
         lines.append("}")
         return "\n".join(lines)
 
@@ -391,8 +437,20 @@ public class CustomBlock extends Block {{
 
     def update_mod_initializer_blocks(self, project_dir, package_path):
         mod_init_path = os.path.join(
-            project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
+            project_dir,
+            "src",
+            "main",
+            "resources",
+            "java",
+            "com",
+            "example",
+            "ExampleMod.java",
         )
+        # Fallback: try com/example/ExampleMod.java in src/main/java
+        if not os.path.exists(mod_init_path):
+            mod_init_path = os.path.join(
+                project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
+            )
         if not os.path.exists(mod_init_path):
             print(
                 f"Mod initializer file not found at {mod_init_path}, skipping block initializer update."
@@ -438,13 +496,11 @@ public class CustomBlock extends Block {{
             os.makedirs(d, exist_ok=True)
         for block in self.registered_blocks:
             if block.block_texture_path and os.path.exists(block.block_texture_path):
-                # Copy block texture as <block.id>.png
                 target_block_texture = os.path.join(block_tex_dir, f"{block.id}.png")
                 shutil.copy(block.block_texture_path, target_block_texture)
                 print(
                     f"Copied block texture from {block.block_texture_path} to {target_block_texture}"
                 )
-                # Generate block model JSON.
                 block_model_json = {
                     "parent": "minecraft:block/cube_all",
                     "textures": {"all": f"{mod_id}:block/{block.id}"},
@@ -453,7 +509,6 @@ public class CustomBlock extends Block {{
                 with open(target_block_model, "w", encoding="utf-8") as file:
                     json.dump(block_model_json, file, indent=2)
                 print(f"Created block model JSON at {target_block_model}")
-                # Generate blockstate JSON.
                 blockstate_json = {
                     "variants": {"": {"model": f"{mod_id}:block/{block.id}"}}
                 }
@@ -461,7 +516,6 @@ public class CustomBlock extends Block {{
                 with open(target_blockstate, "w", encoding="utf-8") as file:
                     json.dump(blockstate_json, file, indent=2)
                 print(f"Created blockstate JSON at {target_blockstate}")
-                # For the BlockItem, use the inventory texture if provided; otherwise, fall back to block texture.
                 if block.inventory_texture_path and os.path.exists(
                     block.inventory_texture_path
                 ):
@@ -476,7 +530,6 @@ public class CustomBlock extends Block {{
                     )
                     target_item_texture = os.path.join(item_tex_dir, f"{block.id}.png")
                     shutil.copy(block.block_texture_path, target_item_texture)
-                # Generate block item model JSON.
                 item_model_json = {
                     "parent": "minecraft:item/generated",
                     "textures": {"layer0": f"{mod_id}:item/{block.id}"},
@@ -485,7 +538,6 @@ public class CustomBlock extends Block {{
                 with open(target_item_model, "w", encoding="utf-8") as file:
                     json.dump(item_model_json, file, indent=2)
                 print(f"Created block item model JSON at {target_item_model}\n")
-                # IMPORTANT: For Minecraft 1.21.4+ an item model definition file is required.
                 item_def_dir = os.path.join(assets_dir, "items")
                 os.makedirs(item_def_dir, exist_ok=True)
                 item_def_json = {

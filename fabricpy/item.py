@@ -12,3 +12,5 @@ class Item:
         self.name = name
         self.max_stack_size = max_stack_size
         self.texture_path = texture_path
+        # Optional: the creative item group to which the item should belong.
+        self.item_group = None
