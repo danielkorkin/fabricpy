@@ -1,576 +1,551 @@
-import os
+# fabricpy/modconfig.py
+"""
+Generates a ready‑to‑build Fabric mod project.
+
+* clones / re‑uses a template repo
+* rewrites fabric.mod.json
+* generates Java for items, food items, and blocks
+* patches ExampleMod.java to call the generated registries
+* copies textures & writes model/blockstate JSON
+* updates language files
+"""
+
+from __future__ import annotations
+
 import json
-import subprocess
+import os
 import re
 import shutil
+import subprocess
+
+from .fooditem import FoodItem
 
 
 class ModConfig:
+    # ------------------------------------------------------------------ #
+    # construction / registration                                        #
+    # ------------------------------------------------------------------ #
+
     def __init__(
         self,
-        mod_id,
-        name,
-        description,
-        version,
-        authors,
-        project_dir="my-fabric-mod",
-        template_repo="https://github.com/FabricMC/fabric-example-mod.git",
+        mod_id: str,
+        name: str,
+        description: str,
+        version: str,
+        authors: list[str] | tuple[str, ...],
+        project_dir: str = "my-fabric-mod",
+        template_repo: str = "https://github.com/FabricMC/fabric-example-mod.git",
     ):
-        """
-        Initializes a mod configuration.
-        :param mod_id: The mod namespace (used in game commands and asset paths).
-        :param name: The display name of the mod.
-        :param description: A short description of the mod.
-        :param version: The mod version.
-        :param authors: A list of author names.
-        :param project_dir: The local directory where the mod project will be created.
-        :param template_repo: The git URL for a Fabric example mod repository.
-        """
         self.mod_id = mod_id
         self.name = name
         self.description = description
         self.version = version
-        self.authors = authors
+        self.authors = list(authors)
         self.project_dir = project_dir
         self.template_repo = template_repo
-        self.registered_items = []
-        self.registered_blocks = []
+
+        self.registered_items: list = []  # Item or FoodItem
+        self.registered_blocks: list = []  # Block
+
+    # public helpers ----------------------------------------------------- #
 
     def registerItem(self, item):
-        """
-        Registers a custom item into the mod.
-        :param item: An instance of fabricpy.Item (or subclass) representing a custom item.
-        """
         self.registered_items.append(item)
 
+    def registerFoodItem(self, food_item: FoodItem):
+        self.registered_items.append(food_item)
+
     def registerBlock(self, block):
-        """
-        Registers a custom block (and its BlockItem) into the mod.
-        :param block: An instance of fabricpy.Block (or subclass) representing a custom block.
-        """
         self.registered_blocks.append(block)
 
+    # ------------------------------------------------------------------ #
+    # main compile routine                                               #
+    # ------------------------------------------------------------------ #
+
     def compile(self):
-        """
-        Creates/updates the Fabric mod project files:
-          1. Clones the example repository if the target directory does not exist.
-          2. Updates the fabric.mod.json file dynamically.
-          3. Creates Java source files for item registration.
-          4. Patches the mod initializer to load item registrations.
-          5. Processes each registered item's texture: copies and generates model JSON files.
-          6. Updates the language file for item names.
-          7. [If any blocks are registered] Creates Java source files for block registration.
-          8. Patches the mod initializer to load block registrations.
-          9. Processes each registered block’s textures: copies textures and generates block model,
-             blockstate, and item (inventory) JSON files (including an item model definition).
-         10. Updates the language file with block names.
-        """
-        # 1. Clone the repository if necessary.
         if not os.path.exists(self.project_dir):
             self.clone_repository(self.template_repo, self.project_dir)
         else:
-            print(
-                f"Directory {self.project_dir} already exists; skipping repository clone."
-            )
+            print(f"Directory `{self.project_dir}` already exists – skipping clone.")
 
-        # 2. Update mod metadata in fabric.mod.json.
-        mod_json_path = os.path.join(
+        # fabric.mod.json --------------------------------------------------
+        meta_path = os.path.join(
             self.project_dir, "src", "main", "resources", "fabric.mod.json"
         )
-        new_metadata = {
-            "id": self.mod_id,
-            "name": self.name,
-            "version": self.version,
-            "description": self.description,
-            "authors": self.authors,
-        }
-        self.update_mod_metadata(mod_json_path, new_metadata)
+        self.update_mod_metadata(
+            meta_path,
+            {
+                "id": self.mod_id,
+                "name": self.name,
+                "version": self.version,
+                "description": self.description,
+                "authors": self.authors,
+            },
+        )
 
-        # 3. Create/update Java source files for item registration.
-        item_package = f"com.example.{self.mod_id}.items"
-        self.create_item_files(self.project_dir, item_package)
-
-        # 4. Update mod initializer for items.
-        self.update_mod_initializer(self.project_dir, item_package)
-
-        # 5. Process registered items: copy textures and generate JSON files.
+        # items / food -----------------------------------------------------
+        item_pkg = f"com.example.{self.mod_id}.items"
+        self.create_item_files(self.project_dir, item_pkg)
+        self.update_mod_initializer(self.project_dir, item_pkg)
         self.copy_texture_and_generate_models(self.project_dir, self.mod_id)
-
-        # 6. Update language file for items.
         self.update_item_lang_file(self.project_dir, self.mod_id)
 
-        # 7. If any blocks are registered, process blocks.
+        # blocks -----------------------------------------------------------
         if self.registered_blocks:
-            block_package = f"com.example.{self.mod_id}.blocks"
-            self.create_block_files(self.project_dir, block_package)
-            self.update_mod_initializer_blocks(self.project_dir, block_package)
+            blk_pkg = f"com.example.{self.mod_id}.blocks"
+            self.create_block_files(self.project_dir, blk_pkg)
+            self.update_mod_initializer_blocks(self.project_dir, blk_pkg)
             self.copy_block_textures_and_generate_models(self.project_dir, self.mod_id)
             self.update_block_lang_file(self.project_dir, self.mod_id)
 
-        print("Mod project compilation complete.")
+        print("\n🎉  Mod project compilation complete.")
 
-    def clone_repository(self, repo_url, target_dir):
-        print(f"Cloning repository from {repo_url} into {target_dir} ...")
-        subprocess.check_call(["git", "clone", repo_url, target_dir])
-        print("Repository cloned successfully.\n")
+    # ------------------------------------------------------------------ #
+    # low‑level helpers                                                  #
+    # ------------------------------------------------------------------ #
 
-    def update_mod_metadata(self, mod_json_path, new_metadata):
-        if not os.path.exists(mod_json_path):
-            raise FileNotFoundError(f"fabric.mod.json not found at {mod_json_path}")
-        print(f"Updating mod metadata in {mod_json_path} ...")
-        with open(mod_json_path, "r", encoding="utf-8") as file:
-            mod_data = json.load(file)
-        mod_data.update(new_metadata)
-        with open(mod_json_path, "w", encoding="utf-8") as file:
-            json.dump(mod_data, file, indent=2)
-        print("Mod metadata updated successfully.\n")
+    def clone_repository(self, repo_url, dst):
+        print(f"Cloning template into `{dst}` …")
+        subprocess.check_call(["git", "clone", repo_url, dst])
+        print("Template cloned.\n")
 
-    # === Item Java Files Generation ===
+    def update_mod_metadata(self, path, data):
+        if not os.path.exists(path):
+            raise FileNotFoundError("fabric.mod.json not found")
+
+        with open(path, "r", encoding="utf-8") as fh:
+            meta = json.load(fh)
+        meta.update(data)
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(meta, fh, indent=2)
+        print("Updated fabric.mod.json\n")
+
+    # =============================== ITEMS ============================= #
+
     def create_item_files(self, project_dir, package_path):
-        java_src_dir = os.path.join(project_dir, "src", "main", "java")
-        full_package_dir = os.path.join(java_src_dir, *package_path.split("."))
-        os.makedirs(full_package_dir, exist_ok=True)
-        print(
-            f"Created/verifying Java package directory for items: {full_package_dir}\n"
-        )
+        java_src = os.path.join(project_dir, "src", "main", "java")
+        pkg_dir = os.path.join(java_src, *package_path.split("."))
+        os.makedirs(pkg_dir, exist_ok=True)
 
-        tutorial_items_content = self.generate_tutorial_items_content(package_path)
-        tutorial_items_path = os.path.join(full_package_dir, "TutorialItems.java")
-        with open(tutorial_items_path, "w", encoding="utf-8") as file:
-            file.write(tutorial_items_content)
-        print(f"Created item registration file: {tutorial_items_path}\n")
+        with open(
+            os.path.join(pkg_dir, "TutorialItems.java"), "w", encoding="utf-8"
+        ) as fh:
+            fh.write(self._tutorial_items_src(package_path))
 
-        custom_item_content = self.generate_custom_item_content(package_path)
-        custom_item_path = os.path.join(full_package_dir, "CustomItem.java")
-        with open(custom_item_path, "w", encoding="utf-8") as file:
-            file.write(custom_item_content)
-        print(f"Created default CustomItem Java file: {custom_item_path}\n")
+        with open(
+            os.path.join(pkg_dir, "CustomItem.java"), "w", encoding="utf-8"
+        ) as fh:
+            fh.write(self._custom_item_src(package_path))
 
-    def generate_tutorial_items_content(self, package_path):
-        # Begin with package and necessary imports.
-        lines = []
-        lines.append(f"package {package_path};")
-        lines.append("")
-        lines.append("import net.minecraft.item.Item;")
-        lines.append("import net.minecraft.util.Identifier;")
-        lines.append("import net.minecraft.registry.Registry;")
-        lines.append("import net.minecraft.registry.RegistryKey;")
-        lines.append("import net.minecraft.registry.RegistryKeys;")
-        lines.append("import net.minecraft.registry.Registries;")
-        lines.append("import net.minecraft.item.Item.Settings;")
-        # If any item has an item group, add the following imports.
-        if any(
-            hasattr(item, "item_group") and item.item_group
-            for item in self.registered_items
-        ):
-            lines.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            lines.append("import net.minecraft.item.ItemGroups;")
-        lines.append("import java.util.function.Function;")
-        lines.append("")
-        lines.append("public final class TutorialItems {")
-        lines.append("    private TutorialItems() {}")
-        lines.append("")
-        # Registration lines
-        for item in self.registered_items:
-            constant_name = item.id.upper()
-            lines.append(
-                f'    public static final Item {constant_name} = register("{item.id}", CustomItem::new, new Item.Settings().maxCount({item.max_stack_size}));'
-            )
-        lines.append("")
-        lines.append(
-            f"    public static Item register(String path, Function<Item.Settings, Item> factory, Item.Settings settings) {{"
-        )
-        lines.append(
-            f'        final RegistryKey<Item> registryKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of("{self.mod_id}", path));'
-        )
-        lines.append("        settings = settings.registryKey(registryKey);")
-        lines.append(
-            f'        return Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", path), factory.apply(settings));'
-        )
-        lines.append("    }")
-        lines.append("")
-        # Build a dictionary of group -> list of item constant names.
-        group_dict = {}
-        for item in self.registered_items:
-            if hasattr(item, "item_group") and item.item_group:
-                group = item.item_group  # e.g. "BUILDING_BLOCKS"
-                group_dict.setdefault(group, []).append(item.id.upper())
-        # Generate the initialize method with item group events.
-        lines.append("    public static void initialize() {")
-        if group_dict:
-            for group, consts in group_dict.items():
-                lines.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{group}).register(entries -> {{"
+    # ------------------------------------------------------------------ #
+
+    def _tutorial_items_src(self, pkg: str) -> str:
+        has_food = any(isinstance(i, FoodItem) for i in self.registered_items)
+        has_groups = any(getattr(i, "item_group", None) for i in self.registered_items)
+
+        l = []
+        l.append(f"package {pkg};\n")
+        l.append("import net.minecraft.item.Item;")
+        if has_food:
+            l.append("import net.minecraft.component.type.FoodComponent;")
+        l.append("import net.minecraft.util.Identifier;")
+        l.append("import net.minecraft.registry.Registry;")
+        l.append("import net.minecraft.registry.RegistryKey;")
+        l.append("import net.minecraft.registry.RegistryKeys;")
+        l.append("import net.minecraft.registry.Registries;")
+        if has_groups:
+            l.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            l.append("import net.minecraft.item.ItemGroups;")
+        l.append("import java.util.function.Function;\n")
+        l.append("public final class TutorialItems {")
+        l.append("    private TutorialItems() {}\n")
+
+        for itm in self.registered_items:
+            const = itm.id.upper()
+            if isinstance(itm, FoodItem):
+                b = [
+                    f".nutrition({itm.nutrition})",
+                    f".saturationModifier({itm.saturation}f)",
+                ]
+                if itm.always_edible:
+                    b.append(".alwaysEdible()")
+                settings = (
+                    "new Item.Settings()"
+                    f".food(new FoodComponent.Builder(){''.join(b)}.build())"
+                    f".maxCount({itm.max_stack_size})"
                 )
-                for const in consts:
-                    lines.append(f"            entries.add({const});")
-                lines.append("        });")
-        lines.append("    }")
-        lines.append("}")
-        return "\n".join(lines)
+                factory = "Item::new"  # vanilla Item for food items
+            else:
+                settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
+                factory = "CustomItem::new"
 
-    def generate_custom_item_content(self, package_path):
-        content = f"""\
-package {package_path};
+            l.append(
+                f'    public static final Item {const} = register("{itm.id}", '
+                f"{factory}, {settings});"
+            )
+        l.append("")
+        l.append(
+            "    private static Item register(String path, "
+            "Function<Item.Settings, Item> factory, Item.Settings settings) {"
+        )
+        l.append(
+            f"        RegistryKey<Item> key = RegistryKey.of(RegistryKeys.ITEM, "
+            f'Identifier.of("{self.mod_id}", path));'
+        )
+        l.append("        settings = settings.registryKey(key);")
+        l.append(
+            f"        return Registry.register(Registries.ITEM, "
+            f'Identifier.of("{self.mod_id}", path), factory.apply(settings));'
+        )
+        l.append("    }\n")
+        l.append("    public static void initialize() {")
+        if has_groups:
+            groups: dict[str, list[str]] = {}
+            for itm in self.registered_items:
+                if getattr(itm, "item_group", None):
+                    groups.setdefault(itm.item_group, []).append(itm.id.upper())
+            for g, consts in groups.items():
+                l.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g})"
+                    ".register(e -> {"
+                )
+                for c in consts:
+                    l.append(f"            e.add({c});")
+                l.append("        });")
+        l.append("    }")
+        l.append("}")
+        return "\n".join(l)
+
+    # ------------------------------------------------------------------ #
+
+    def _custom_item_src(self, pkg: str) -> str:
+        return f"""package {pkg};
 
 import net.minecraft.item.Item;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.world.World;
 
 public class CustomItem extends Item {{
-    public CustomItem(Settings settings) {{
-        super(settings);
-    }}
+    public CustomItem(Settings settings) {{ super(settings); }}
 
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {{
         if (!world.isClient()) {{
-            world.playSound(null, user.getBlockPos(), SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.PLAYERS, 1.0F, 1.0F);
+            world.playSound(null, user.getBlockPos(),
+                    SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.PLAYERS, 1F, 1F);
         }}
         return ActionResult.SUCCESS;
     }}
 }}
 """
-        return content
 
-    def update_mod_initializer(self, project_dir, package_path):
-        mod_init_path = os.path.join(
-            project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
+    # ---------------- ExampleMod.java patch ---------------------------- #
+
+    def update_mod_initializer(self, project_dir, pkg):
+        self._patch_initializer(
+            project_dir, f"{pkg}.TutorialItems.initialize();", "items"
         )
-        if not os.path.exists(mod_init_path):
-            print(
-                f"Mod initializer file not found at {mod_init_path}, skipping update for items."
-            )
-            return
-        print(f"Updating mod initializer for items at {mod_init_path}...")
-        with open(mod_init_path, "r", encoding="utf-8") as file:
-            content = file.read()
-        if f"{package_path}.TutorialItems.initialize()" in content:
-            print("Item initializer already present; skipping update.\n")
-            return
-        pattern = r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)"
 
-        def replacer(match):
-            return match.group(0) + f"\n    {package_path}.TutorialItems.initialize();"
+    def update_mod_initializer_blocks(self, project_dir, pkg):
+        self._patch_initializer(
+            project_dir, f"{pkg}.TutorialBlocks.initialize();", "blocks"
+        )
 
-        new_content, count = re.subn(pattern, replacer, content, count=1)
-        if count > 0:
-            with open(mod_init_path, "w", encoding="utf-8") as file:
-                file.write(new_content)
-            print("Item initializer updated successfully.\n")
+    def _patch_initializer(self, project_dir, line, kind):
+        paths = [
+            os.path.join(
+                project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
+            ),
+            os.path.join(
+                project_dir,
+                "src",
+                "main",
+                "resources",
+                "java",
+                "com",
+                "example",
+                "ExampleMod.java",
+            ),
+        ]
+        init = next((p for p in paths if os.path.exists(p)), None)
+        if not init:
+            print(f"WARNING: ExampleMod.java not found – cannot patch {kind}.")
+            return
+        with open(init, "r", encoding="utf-8") as fh:
+            txt = fh.read()
+        if line in txt:
+            return
+        new, n = re.subn(
+            r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)",
+            r"\1\n        " + line,
+            txt,
+            1,
+        )
+        if n:
+            with open(init, "w", encoding="utf-8") as fh:
+                fh.write(new)
+            print(f"Patched ExampleMod.java for {kind}.")
         else:
-            print(
-                "Could not locate onInitialize() method; skipping item initializer update.\n"
-            )
+            print(f"WARNING: could not patch ExampleMod.java for {kind}.")
+
+    # ---------- copy textures, model JSON, lang (items) ---------------- #
 
     def copy_texture_and_generate_models(self, project_dir, mod_id):
-        assets_dir = os.path.join(
-            project_dir, "src", "main", "resources", "assets", mod_id
-        )
-        texture_dir = os.path.join(assets_dir, "textures", "item")
-        model_dir = os.path.join(assets_dir, "models", "item")
-        itemdef_dir = os.path.join(assets_dir, "items")
-        for d in (texture_dir, model_dir, itemdef_dir):
+        assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
+        tex = os.path.join(assets, "textures", "item")
+        mdl = os.path.join(assets, "models", "item")
+        idef = os.path.join(assets, "items")
+        for d in (tex, mdl, idef):
             os.makedirs(d, exist_ok=True)
-        for item in self.registered_items:
-            if item.texture_path and os.path.exists(item.texture_path):
-                target_texture_filename = f"{item.id}.png"
-                target_texture_path = os.path.join(texture_dir, target_texture_filename)
-                shutil.copy(item.texture_path, target_texture_path)
-                print(
-                    f"Copied item texture from {item.texture_path} to {target_texture_path}"
+
+        for itm in self.registered_items:
+            if not itm.texture_path or not os.path.exists(itm.texture_path):
+                print(f"SKIP texture for `{itm.id}`")
+                continue
+            shutil.copy(itm.texture_path, os.path.join(tex, f"{itm.id}.png"))
+            with open(os.path.join(mdl, f"{itm.id}.json"), "w", encoding="utf-8") as fh:
+                json.dump(
+                    {
+                        "parent": "minecraft:item/generated",
+                        "textures": {"layer0": f"{mod_id}:item/{itm.id}"},
+                    },
+                    fh,
+                    indent=2,
                 )
-                model_json_content = {
-                    "parent": "minecraft:item/generated",
-                    "textures": {"layer0": f"{mod_id}:item/{item.id}"},
-                }
-                target_model_path = os.path.join(model_dir, f"{item.id}.json")
-                with open(target_model_path, "w", encoding="utf-8") as file:
-                    json.dump(model_json_content, file, indent=2)
-                print(f"Created item model JSON at {target_model_path}")
-                item_model_def_content = {
-                    "model": {
-                        "type": "minecraft:model",
-                        "model": f"{mod_id}:item/{item.id}",
-                    }
-                }
-                target_itemdef_path = os.path.join(itemdef_dir, f"{item.id}.json")
-                with open(target_itemdef_path, "w", encoding="utf-8") as file:
-                    json.dump(item_model_def_content, file, indent=2)
-                print(f"Created item model definition JSON at {target_itemdef_path}\n")
-            else:
-                print(f"No valid texture for item '{item.id}'; skipping texture copy.")
+            with open(
+                os.path.join(idef, f"{itm.id}.json"), "w", encoding="utf-8"
+            ) as fh:
+                json.dump(
+                    {
+                        "model": {
+                            "type": "minecraft:model",
+                            "model": f"{mod_id}:item/{itm.id}",
+                        }
+                    },
+                    fh,
+                    indent=2,
+                )
 
     def update_item_lang_file(self, project_dir, mod_id):
-        lang_dir = os.path.join(
+        lang = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
-        os.makedirs(lang_dir, exist_ok=True)
-        lang_file = os.path.join(lang_dir, "en_us.json")
-        if os.path.exists(lang_file):
-            with open(lang_file, "r", encoding="utf-8") as file:
-                try:
-                    lang_data = json.load(file)
-                except json.JSONDecodeError:
-                    lang_data = {}
-        else:
-            lang_data = {}
-        for item in self.registered_items:
-            lang_data[f"item.{mod_id}.{item.id}"] = item.name
-        with open(lang_file, "w", encoding="utf-8") as file:
-            json.dump(lang_data, file, indent=2)
-        print(f"Updated language file for items at {lang_file}.\n")
+        os.makedirs(lang, exist_ok=True)
+        path = os.path.join(lang, "en_us.json")
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            data = {}
+        for itm in self.registered_items:
+            data[f"item.{mod_id}.{itm.id}"] = itm.name
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)
 
-    # === Block Java Files and Assets Generation ===
+    # =============================== BLOCKS ============================ #
+
     def create_block_files(self, project_dir, package_path):
-        java_src_dir = os.path.join(project_dir, "src", "main", "java")
-        full_package_dir = os.path.join(java_src_dir, *package_path.split("."))
-        os.makedirs(full_package_dir, exist_ok=True)
-        print(
-            f"Created/verifying Java package directory for blocks: {full_package_dir}\n"
-        )
-        tutorial_blocks_content = self.generate_tutorial_blocks_content(package_path)
-        tutorial_blocks_path = os.path.join(full_package_dir, "TutorialBlocks.java")
-        with open(tutorial_blocks_path, "w", encoding="utf-8") as file:
-            file.write(tutorial_blocks_content)
-        print(f"Created block registration file: {tutorial_blocks_path}\n")
-        custom_block_content = self.generate_custom_block_content(package_path)
-        custom_block_path = os.path.join(full_package_dir, "CustomBlock.java")
-        with open(custom_block_path, "w", encoding="utf-8") as file:
-            file.write(custom_block_content)
-        print(f"Created default CustomBlock Java file: {custom_block_path}\n")
+        java_src = os.path.join(project_dir, "src", "main", "java")
+        pkg_dir = os.path.join(java_src, *package_path.split("."))
+        os.makedirs(pkg_dir, exist_ok=True)
+        with open(
+            os.path.join(pkg_dir, "TutorialBlocks.java"), "w", encoding="utf-8"
+        ) as fh:
+            fh.write(self._tutorial_blocks_src(package_path))
+        with open(
+            os.path.join(pkg_dir, "CustomBlock.java"), "w", encoding="utf-8"
+        ) as fh:
+            fh.write(self._custom_block_src(package_path))
 
-    def generate_tutorial_blocks_content(self, package_path):
-        lines = []
-        lines.append(f"package {package_path};")
-        lines.append("")
-        lines.append("import net.minecraft.block.Block;")
-        lines.append("import net.minecraft.block.AbstractBlock;")
-        lines.append("import net.minecraft.block.Blocks;")
-        lines.append("import net.minecraft.item.BlockItem;")
-        lines.append("import net.minecraft.item.Item;")
-        lines.append("import net.minecraft.util.Identifier;")
-        lines.append("import net.minecraft.registry.Registry;")
-        lines.append("import net.minecraft.registry.RegistryKey;")
-        lines.append("import net.minecraft.registry.RegistryKeys;")
-        lines.append("import net.minecraft.registry.Registries;")
-        # If any block has an item group, add these imports.
-        if any(
-            hasattr(block, "item_group") and block.item_group
-            for block in self.registered_blocks
-        ):
-            lines.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            lines.append("import net.minecraft.item.ItemGroups;")
-        lines.append("import java.util.function.Function;")
-        lines.append("")
-        lines.append("public final class TutorialBlocks {")
-        lines.append("    private TutorialBlocks() {}")
-        lines.append("")
-        for block in self.registered_blocks:
-            constant_name = block.id.upper()
-            lines.append(
-                f'    public static final Block {constant_name} = register("{block.id}", CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE).requiresTool(), true);'
+    def _tutorial_blocks_src(self, pkg: str) -> str:
+        has_groups = any(getattr(b, "item_group", None) for b in self.registered_blocks)
+        l = []
+        l.append(f"package {pkg};\n")
+        l.append("import net.minecraft.block.Block;")
+        l.append("import net.minecraft.block.AbstractBlock;")
+        l.append("import net.minecraft.block.Blocks;")
+        l.append("import net.minecraft.item.BlockItem;")
+        l.append("import net.minecraft.item.Item;")
+        l.append("import net.minecraft.util.Identifier;")
+        l.append("import net.minecraft.registry.Registry;")
+        l.append("import net.minecraft.registry.RegistryKey;")
+        l.append("import net.minecraft.registry.RegistryKeys;")
+        l.append("import net.minecraft.registry.Registries;")
+        if has_groups:
+            l.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            l.append("import net.minecraft.item.ItemGroups;")
+        l.append("import java.util.function.Function;\n")
+        l.append("public final class TutorialBlocks {")
+        l.append("    private TutorialBlocks() {}\n")
+        for b in self.registered_blocks:
+            const = b.id.upper()
+            l.append(
+                f'    public static final Block {const} = register("{b.id}", '
+                f"CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE)"
+                ".requiresTool(), true);"
             )
-        lines.append("")
-        lines.append(
-            f"    public static Block register(String path, Function<AbstractBlock.Settings, Block> factory, AbstractBlock.Settings settings, boolean registerItem) {{"
+        l.append("")
+        l.append(
+            "    private static Block register(String p, "
+            "Function<AbstractBlock.Settings, Block> f, "
+            "AbstractBlock.Settings s, boolean item) {"
         )
-        lines.append(
-            f'        final RegistryKey<Block> blockKey = RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("{self.mod_id}", path));'
+        l.append(
+            f"        RegistryKey<Block> bk = RegistryKey.of(RegistryKeys.BLOCK, "
+            f'Identifier.of("{self.mod_id}", p));'
         )
-        lines.append("        settings = settings.registryKey(blockKey);")
-        lines.append(
-            f'        Block block = Registry.register(Registries.BLOCK, Identifier.of("{self.mod_id}", path), factory.apply(settings));'
+        l.append("        s = s.registryKey(bk);")
+        l.append(
+            f"        Block b = Registry.register(Registries.BLOCK, "
+            f'Identifier.of("{self.mod_id}", p), f.apply(s));'
         )
-        lines.append("        if (registerItem) {")
-        lines.append(
-            f'            final RegistryKey<Item> itemKey = RegistryKey.of(RegistryKeys.ITEM, Identifier.of("{self.mod_id}", path));'
+        l.append("        if (item) {")
+        l.append(
+            f'            Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", p), '
+            "new BlockItem(b, new Item.Settings().registryKey("
+            "RegistryKey.of(RegistryKeys.ITEM, Identifier.of("
+            f'"{self.mod_id}", p)))));'
         )
-        lines.append(
-            "            Item.Settings itemSettings = new Item.Settings().maxCount(64).registryKey(itemKey);"
-        )
-        lines.append(
-            f'            Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", path), new BlockItem(block, itemSettings));'
-        )
-        lines.append("        }")
-        lines.append("        return block;")
-        lines.append("    }")
-        lines.append("")
-        # Group block items that specify an item group.
-        group_dict = {}
-        for block in self.registered_blocks:
-            if hasattr(block, "item_group") and block.item_group:
-                group = block.item_group
-                group_dict.setdefault(group, []).append(block.id.upper())
-        lines.append("    public static void initialize() {")
-        if group_dict:
-            for group, consts in group_dict.items():
-                lines.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{group}).register(entries -> {{"
+        l.append("        }")
+        l.append("        return b;")
+        l.append("    }\n")
+        l.append("    public static void initialize() {")
+        if has_groups:
+            groups: dict[str, list[str]] = {}
+            for b in self.registered_blocks:
+                if getattr(b, "item_group", None):
+                    groups.setdefault(b.item_group, []).append(b.id.upper())
+            for g, consts in groups.items():
+                l.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g})"
+                    ".register(e -> {"
                 )
-                for const in consts:
-                    lines.append(f"            entries.add({const}.asItem());")
-                lines.append("        });")
-        lines.append("    }")
-        lines.append("}")
-        return "\n".join(lines)
+                for c in consts:
+                    l.append(f"            e.add({c}.asItem());")
+                l.append("        });")
+        l.append("    }")
+        l.append("}")
+        return "\n".join(l)
 
-    def generate_custom_block_content(self, package_path):
-        content = f"""\
-package {package_path};
+    def _custom_block_src(self, pkg: str) -> str:
+        return f"""package {pkg};
 
 import net.minecraft.block.Block;
 import net.minecraft.block.AbstractBlock;
 
 public class CustomBlock extends Block {{
-    public CustomBlock(AbstractBlock.Settings settings) {{
-        super(settings);
-    }}
+    public CustomBlock(AbstractBlock.Settings s) {{ super(s); }}
 }}
 """
-        return content
 
-    def update_mod_initializer_blocks(self, project_dir, package_path):
-        mod_init_path = os.path.join(
-            project_dir,
-            "src",
-            "main",
-            "resources",
-            "java",
-            "com",
-            "example",
-            "ExampleMod.java",
-        )
-        # Fallback: try com/example/ExampleMod.java in src/main/java
-        if not os.path.exists(mod_init_path):
-            mod_init_path = os.path.join(
-                project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
-            )
-        if not os.path.exists(mod_init_path):
-            print(
-                f"Mod initializer file not found at {mod_init_path}, skipping block initializer update."
-            )
-            return
-        print(f"Updating mod initializer for blocks at {mod_init_path}...")
-        with open(mod_init_path, "r", encoding="utf-8") as file:
-            content = file.read()
-        if f"{package_path}.TutorialBlocks.initialize()" in content:
-            print("Block initializer already present; skipping update.\n")
-            return
-        pattern = r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)"
-
-        def replacer(match):
-            return match.group(0) + f"\n    {package_path}.TutorialBlocks.initialize();"
-
-        new_content, count = re.subn(pattern, replacer, content, count=1)
-        if count > 0:
-            with open(mod_init_path, "w", encoding="utf-8") as file:
-                file.write(new_content)
-            print("Block initializer updated successfully.\n")
-        else:
-            print(
-                "Could not locate onInitialize() method; skipping block initializer update.\n"
-            )
+    # ---------- inject initialize() call into ExampleMod.java ----------- #
 
     def copy_block_textures_and_generate_models(self, project_dir, mod_id):
-        assets_dir = os.path.join(
-            project_dir, "src", "main", "resources", "assets", mod_id
-        )
-        block_tex_dir = os.path.join(assets_dir, "textures", "block")
-        block_model_dir = os.path.join(assets_dir, "models", "block")
-        blockstate_dir = os.path.join(assets_dir, "blockstates")
-        item_tex_dir = os.path.join(assets_dir, "textures", "item")
-        item_model_dir = os.path.join(assets_dir, "models", "item")
+        assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
+        blk_tex_dir = os.path.join(assets, "textures", "block")
+        blk_mdl_dir = os.path.join(assets, "models", "block")
+        blkstate_dir = os.path.join(assets, "blockstates")
+        itm_tex_dir = os.path.join(assets, "textures", "item")
+        itm_mdl_dir = os.path.join(assets, "models", "item")
+        itm_def_dir = os.path.join(assets, "items")
+
         for d in (
-            block_tex_dir,
-            block_model_dir,
-            blockstate_dir,
-            item_tex_dir,
-            item_model_dir,
+            blk_tex_dir,
+            blk_mdl_dir,
+            blkstate_dir,
+            itm_tex_dir,
+            itm_mdl_dir,
+            itm_def_dir,
         ):
             os.makedirs(d, exist_ok=True)
-        for block in self.registered_blocks:
-            if block.block_texture_path and os.path.exists(block.block_texture_path):
-                target_block_texture = os.path.join(block_tex_dir, f"{block.id}.png")
-                shutil.copy(block.block_texture_path, target_block_texture)
-                print(
-                    f"Copied block texture from {block.block_texture_path} to {target_block_texture}"
+
+        for blk in self.registered_blocks:
+            if not (blk.block_texture_path and os.path.exists(blk.block_texture_path)):
+                print(f"SKIP block `{blk.id}` – missing texture")
+                continue
+
+            # block texture
+            shutil.copy(
+                blk.block_texture_path, os.path.join(blk_tex_dir, f"{blk.id}.png")
+            )
+
+            # block model
+            with open(
+                os.path.join(blk_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+            ) as fh:
+                json.dump(
+                    {
+                        "parent": "minecraft:block/cube_all",
+                        "textures": {"all": f"{mod_id}:block/{blk.id}"},
+                    },
+                    fh,
+                    indent=2,
                 )
-                block_model_json = {
-                    "parent": "minecraft:block/cube_all",
-                    "textures": {"all": f"{mod_id}:block/{block.id}"},
-                }
-                target_block_model = os.path.join(block_model_dir, f"{block.id}.json")
-                with open(target_block_model, "w", encoding="utf-8") as file:
-                    json.dump(block_model_json, file, indent=2)
-                print(f"Created block model JSON at {target_block_model}")
-                blockstate_json = {
-                    "variants": {"": {"model": f"{mod_id}:block/{block.id}"}}
-                }
-                target_blockstate = os.path.join(blockstate_dir, f"{block.id}.json")
-                with open(target_blockstate, "w", encoding="utf-8") as file:
-                    json.dump(blockstate_json, file, indent=2)
-                print(f"Created blockstate JSON at {target_blockstate}")
-                if block.inventory_texture_path and os.path.exists(
-                    block.inventory_texture_path
-                ):
-                    target_item_texture = os.path.join(item_tex_dir, f"{block.id}.png")
-                    shutil.copy(block.inventory_texture_path, target_item_texture)
-                    print(
-                        f"Copied inventory texture from {block.inventory_texture_path} to {target_item_texture}"
-                    )
-                else:
-                    print(
-                        "No valid inventory texture provided; using block texture as default."
-                    )
-                    target_item_texture = os.path.join(item_tex_dir, f"{block.id}.png")
-                    shutil.copy(block.block_texture_path, target_item_texture)
-                item_model_json = {
-                    "parent": "minecraft:item/generated",
-                    "textures": {"layer0": f"{mod_id}:item/{block.id}"},
-                }
-                target_item_model = os.path.join(item_model_dir, f"{block.id}.json")
-                with open(target_item_model, "w", encoding="utf-8") as file:
-                    json.dump(item_model_json, file, indent=2)
-                print(f"Created block item model JSON at {target_item_model}\n")
-                item_def_dir = os.path.join(assets_dir, "items")
-                os.makedirs(item_def_dir, exist_ok=True)
-                item_def_json = {
-                    "model": {"type": "model", "model": f"{mod_id}:item/{block.id}"}
-                }
-                target_item_def = os.path.join(item_def_dir, f"{block.id}.json")
-                with open(target_item_def, "w", encoding="utf-8") as file:
-                    json.dump(item_def_json, file, indent=2)
-                print(
-                    f"Created block item model definition JSON at {target_item_def}\n"
+
+            # blockstate
+            with open(
+                os.path.join(blkstate_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+            ) as fh:
+                json.dump(
+                    {"variants": {"": {"model": f"{mod_id}:block/{blk.id}"}}},
+                    fh,
+                    indent=2,
                 )
-            else:
-                print(
-                    f"No valid block texture for block '{block.id}'; skipping texture copy."
+
+            # inventory texture
+            inv_src = (
+                blk.inventory_texture_path
+                if blk.inventory_texture_path
+                and os.path.exists(blk.inventory_texture_path)
+                else blk.block_texture_path
+            )
+            shutil.copy(inv_src, os.path.join(itm_tex_dir, f"{blk.id}.png"))
+
+            # item model
+            with open(
+                os.path.join(itm_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+            ) as fh:
+                json.dump(
+                    {
+                        "parent": "minecraft:item/generated",
+                        "textures": {"layer0": f"{mod_id}:item/{blk.id}"},
+                    },
+                    fh,
+                    indent=2,
+                )
+
+            # item definition
+            with open(
+                os.path.join(itm_def_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+            ) as fh:
+                json.dump(
+                    {
+                        "model": {
+                            "type": "minecraft:model",
+                            "model": f"{mod_id}:item/{blk.id}",
+                        }
+                    },
+                    fh,
+                    indent=2,
                 )
 
     def update_block_lang_file(self, project_dir, mod_id):
-        lang_dir = os.path.join(
+        lang = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
-        os.makedirs(lang_dir, exist_ok=True)
-        lang_file = os.path.join(lang_dir, "en_us.json")
-        if os.path.exists(lang_file):
-            with open(lang_file, "r", encoding="utf-8") as file:
-                try:
-                    lang_data = json.load(file)
-                except json.JSONDecodeError:
-                    lang_data = {}
-        else:
-            lang_data = {}
-        for block in self.registered_blocks:
-            lang_data[f"block.{mod_id}.{block.id}"] = block.name
-            lang_data[f"item.{mod_id}.{block.id}"] = block.name
-        with open(lang_file, "w", encoding="utf-8") as file:
-            json.dump(lang_data, file, indent=2)
-        print(f"Updated language file for blocks at {lang_file}.\n")
+        os.makedirs(lang, exist_ok=True)
+        path = os.path.join(lang, "en_us.json")
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            data = {}
+        for blk in self.registered_blocks:
+            data[f"block.{mod_id}.{blk.id}"] = blk.name
+            data[f"item.{mod_id}.{blk.id}"] = blk.name
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)

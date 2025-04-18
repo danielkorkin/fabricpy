@@ -1,4 +1,8 @@
-# These constants should match the standard Fabric/Minecraft groups.
+# fabricpy/item_group.py
+"""
+Vanilla creative‑tab identifiers.  Match names in net.minecraft.item.ItemGroups.
+"""
+
 BUILDING_BLOCKS = "BUILDING_BLOCKS"
 NATURAL = "NATURAL"
 FUNCTIONAL = "FUNCTIONAL"
