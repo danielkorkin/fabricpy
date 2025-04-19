@@ -1,13 +1,18 @@
 # fabricpy/modconfig.py
 """
-Generates a ready‑to‑build Fabric mod project.
+Generates a ready‑to‑build Fabric mod project on disk.
 
-* clones / re‑uses a template repo
-* rewrites fabric.mod.json
-* generates Java for items, food items, and blocks
-* patches ExampleMod.java to call the generated registries
-* copies textures & writes model/blockstate JSON
-* updates language files
+* clones (or re‑uses) the Fabric example‑mod template repository
+* rewrites fabric.mod.json with your metadata
+* generates Java for:
+      – items & food items
+      – **custom ItemGroups** (creative‑inventory tabs)
+      – blocks (with BlockItems)
+* patches ExampleMod.java so those registries run at game‑init
+* copies textures & writes model / blockstate JSON files
+* writes / merges language (en_us.json) entries for items, blocks & tabs
+
+Tested against **Minecraft 1.21.5 + Fabric‑API 0.119.5**.
 """
 
 from __future__ import annotations
@@ -17,10 +22,16 @@ import os
 import re
 import shutil
 import subprocess
+from collections import defaultdict
+from typing import List, Set, Dict
 
 from .fooditem import FoodItem
+from .itemgroup import ItemGroup
 
 
+# --------------------------------------------------------------------- #
+#                             ModConfig                                 #
+# --------------------------------------------------------------------- #
 class ModConfig:
     # ------------------------------------------------------------------ #
     # construction / registration                                        #
@@ -32,7 +43,7 @@ class ModConfig:
         name: str,
         description: str,
         version: str,
-        authors: list[str] | tuple[str, ...],
+        authors: List[str] | tuple[str, ...],
         project_dir: str = "my-fabric-mod",
         template_repo: str = "https://github.com/FabricMC/fabric-example-mod.git",
     ):
@@ -44,8 +55,8 @@ class ModConfig:
         self.project_dir = project_dir
         self.template_repo = template_repo
 
-        self.registered_items: list = []  # Item or FoodItem
-        self.registered_blocks: list = []  # Block
+        self.registered_items: List = []  # Item or FoodItem
+        self.registered_blocks: List = []  # Block
 
     # public helpers ----------------------------------------------------- #
 
@@ -63,12 +74,13 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def compile(self):
+        # 1) clone template ------------------------------------------------
         if not os.path.exists(self.project_dir):
             self.clone_repository(self.template_repo, self.project_dir)
         else:
             print(f"Directory `{self.project_dir}` already exists – skipping clone.")
 
-        # fabric.mod.json --------------------------------------------------
+        # 2) update fabric.mod.json ---------------------------------------
         meta_path = os.path.join(
             self.project_dir, "src", "main", "resources", "fabric.mod.json"
         )
@@ -83,14 +95,17 @@ class ModConfig:
             },
         )
 
-        # items / food -----------------------------------------------------
+        # 3) items / food items / custom tabs -----------------------------
         item_pkg = f"com.example.{self.mod_id}.items"
         self.create_item_files(self.project_dir, item_pkg)
-        self.update_mod_initializer(self.project_dir, item_pkg)
+        self.create_item_group_files(self.project_dir, item_pkg)
+        self.update_mod_initializer(self.project_dir, item_pkg)  # items
+        self.update_mod_initializer_itemgroups(self.project_dir, item_pkg)  # tabs
         self.copy_texture_and_generate_models(self.project_dir, self.mod_id)
         self.update_item_lang_file(self.project_dir, self.mod_id)
+        self.update_item_group_lang_entries(self.project_dir, self.mod_id)
 
-        # blocks -----------------------------------------------------------
+        # 4) blocks --------------------------------------------------------
         if self.registered_blocks:
             blk_pkg = f"com.example.{self.mod_id}.blocks"
             self.create_block_files(self.project_dir, blk_pkg)
@@ -120,7 +135,11 @@ class ModConfig:
             json.dump(meta, fh, indent=2)
         print("Updated fabric.mod.json\n")
 
-    # =============================== ITEMS ============================= #
+    # ================================================================== #
+    #                          ITEMS  &  FOOD                            #
+    # ================================================================== #
+
+    # ---------- Java source generation -------------------------------- #
 
     def create_item_files(self, project_dir, package_path):
         java_src = os.path.join(project_dir, "src", "main", "java")
@@ -137,28 +156,29 @@ class ModConfig:
         ) as fh:
             fh.write(self._custom_item_src(package_path))
 
-    # ------------------------------------------------------------------ #
-
     def _tutorial_items_src(self, pkg: str) -> str:
         has_food = any(isinstance(i, FoodItem) for i in self.registered_items)
-        has_groups = any(getattr(i, "item_group", None) for i in self.registered_items)
+        has_vanila = any(
+            isinstance(getattr(i, "item_group", None), str)
+            for i in self.registered_items
+        )
 
-        l = []
-        l.append(f"package {pkg};\n")
-        l.append("import net.minecraft.item.Item;")
+        L: List[str] = []
+        L.append(f"package {pkg};\n")
+        L.append("import net.minecraft.item.Item;")
         if has_food:
-            l.append("import net.minecraft.component.type.FoodComponent;")
-        l.append("import net.minecraft.util.Identifier;")
-        l.append("import net.minecraft.registry.Registry;")
-        l.append("import net.minecraft.registry.RegistryKey;")
-        l.append("import net.minecraft.registry.RegistryKeys;")
-        l.append("import net.minecraft.registry.Registries;")
-        if has_groups:
-            l.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            l.append("import net.minecraft.item.ItemGroups;")
-        l.append("import java.util.function.Function;\n")
-        l.append("public final class TutorialItems {")
-        l.append("    private TutorialItems() {}\n")
+            L.append("import net.minecraft.component.type.FoodComponent;")
+        L.append("import net.minecraft.util.Identifier;")
+        L.append("import net.minecraft.registry.Registry;")
+        L.append("import net.minecraft.registry.RegistryKey;")
+        L.append("import net.minecraft.registry.RegistryKeys;")
+        L.append("import net.minecraft.registry.Registries;")
+        if has_vanila:
+            L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            L.append("import net.minecraft.item.ItemGroups;")
+        L.append("import java.util.function.Function;\n")
+        L.append("public final class TutorialItems {")
+        L.append("    private TutorialItems() {}\n")
 
         for itm in self.registered_items:
             const = itm.id.upper()
@@ -174,49 +194,43 @@ class ModConfig:
                     f".food(new FoodComponent.Builder(){''.join(b)}.build())"
                     f".maxCount({itm.max_stack_size})"
                 )
-                factory = "Item::new"  # vanilla Item for food items
+                factory = "Item::new"
             else:
                 settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
                 factory = "CustomItem::new"
-
-            l.append(
+            L.append(
                 f'    public static final Item {const} = register("{itm.id}", '
                 f"{factory}, {settings});"
             )
-        l.append("")
-        l.append(
+        L.append("")
+        L.append(
             "    private static Item register(String path, "
             "Function<Item.Settings, Item> factory, Item.Settings settings) {"
         )
-        l.append(
-            f"        RegistryKey<Item> key = RegistryKey.of(RegistryKeys.ITEM, "
-            f'Identifier.of("{self.mod_id}", path));'
+        L.append(
+            f'        RegistryKey<Item> key = RegistryKey.of(RegistryKeys.ITEM, Identifier.of("{self.mod_id}", path));'
         )
-        l.append("        settings = settings.registryKey(key);")
-        l.append(
-            f"        return Registry.register(Registries.ITEM, "
-            f'Identifier.of("{self.mod_id}", path), factory.apply(settings));'
+        L.append("        settings = settings.registryKey(key);")
+        L.append(
+            f'        return Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", path), factory.apply(settings));'
         )
-        l.append("    }\n")
-        l.append("    public static void initialize() {")
-        if has_groups:
-            groups: dict[str, list[str]] = {}
+        L.append("    }\n")
+        L.append("    public static void initialize() {")
+        if has_vanila:
+            groups: Dict[str, List[str]] = defaultdict(list)
             for itm in self.registered_items:
-                if getattr(itm, "item_group", None):
-                    groups.setdefault(itm.item_group, []).append(itm.id.upper())
+                if isinstance(itm.item_group, str):
+                    groups[itm.item_group].append(itm.id.upper())
             for g, consts in groups.items():
-                l.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g})"
-                    ".register(e -> {"
+                L.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
                 )
                 for c in consts:
-                    l.append(f"            e.add({c});")
-                l.append("        });")
-        l.append("    }")
-        l.append("}")
-        return "\n".join(l)
-
-    # ------------------------------------------------------------------ #
+                    L.append(f"            e.add({c});")
+                L.append("        });")
+        L.append("    }")
+        L.append("}")
+        return "\n".join(L)
 
     def _custom_item_src(self, pkg: str) -> str:
         return f"""package {pkg};
@@ -243,19 +257,116 @@ public class CustomItem extends Item {{
 }}
 """
 
-    # ---------------- ExampleMod.java patch ---------------------------- #
+    # ================================================================== #
+    #                      CUSTOM   ITEM   GROUPS                        #
+    # ================================================================== #
+
+    @property
+    def _custom_groups(self) -> Set[ItemGroup]:
+        groups: Set[ItemGroup] = set()
+        for itm in self.registered_items:
+            if isinstance(itm.item_group, ItemGroup):
+                groups.add(itm.item_group)
+        for blk in self.registered_blocks:
+            if isinstance(blk.item_group, ItemGroup):
+                groups.add(blk.item_group)
+        return groups
+
+    def create_item_group_files(self, project_dir, package_path):
+        if not self._custom_groups:
+            return
+        java_src = os.path.join(project_dir, "src", "main", "java")
+        pkg_dir = os.path.join(java_src, *package_path.split("."))
+        os.makedirs(pkg_dir, exist_ok=True)
+        with open(
+            os.path.join(pkg_dir, "TutorialItemGroups.java"), "w", encoding="utf-8"
+        ) as fh:
+            fh.write(self._tutorial_itemgroups_src(package_path))
+
+    def _tutorial_itemgroups_src(self, pkg: str) -> str:
+        # detect if blocks are referenced so we can import TutorialBlocks
+        blocks_referenced = any(
+            isinstance(blk.item_group, ItemGroup) for blk in self.registered_blocks
+        )
+
+        L: List[str] = []
+        L.append(f"package {pkg};\n")
+        L.append("import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;")
+        L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+        L.append("import net.minecraft.item.ItemGroup;")
+        L.append("import net.minecraft.item.ItemStack;")
+        L.append("import net.minecraft.registry.Registry;")
+        L.append("import net.minecraft.registry.RegistryKey;")
+        L.append("import net.minecraft.registry.RegistryKeys;")
+        L.append("import net.minecraft.registry.Registries;")
+        L.append("import net.minecraft.util.Identifier;")
+        L.append("import net.minecraft.text.Text;")
+        if blocks_referenced:
+            L.append(f"import com.example.{self.mod_id}.blocks.TutorialBlocks;")
+        L.append("\npublic final class TutorialItemGroups {")
+        L.append("    private TutorialItemGroups() {}\n")
+
+        # build (group -> expr‑strings) mapping
+        group_entries: Dict[ItemGroup, List[str]] = defaultdict(list)
+        for itm in self.registered_items:
+            if isinstance(itm.item_group, ItemGroup):
+                group_entries[itm.item_group].append(f"TutorialItems.{itm.id.upper()}")
+        for blk in self.registered_blocks:
+            if isinstance(blk.item_group, ItemGroup):
+                group_entries[blk.item_group].append(
+                    f"TutorialBlocks.{blk.id.upper()}.asItem()"
+                )
+
+        for grp in self._custom_groups:
+            const = grp.id.upper()
+            L.append(
+                f"    public static final RegistryKey<ItemGroup> {const}_KEY = "
+                f'RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.of("{self.mod_id}", "{grp.id}"));'
+            )
+            icon_expr = (
+                f"TutorialItems.{grp.icon_item_id.upper()}"
+                if grp.icon_item_id
+                else group_entries[grp][0]
+            )
+            L.append(
+                f"    public static final ItemGroup {const} = FabricItemGroup.builder()\n"
+                f"        .icon(() -> new ItemStack({icon_expr}))\n"
+                f'        .displayName(Text.translatable("itemGroup.{self.mod_id}.{grp.id}"))\n'
+                "        .build();\n"
+            )
+
+        L.append("    public static void initialize() {")
+        for grp in self._custom_groups:
+            const = grp.id.upper()
+            L.append(
+                f"        Registry.register(Registries.ITEM_GROUP, {const}_KEY, {const});"
+            )
+            L.append(
+                f"        ItemGroupEvents.modifyEntriesEvent({const}_KEY).register(e -> {{"
+            )
+            for expr in group_entries[grp]:
+                L.append(f"            e.add({expr});")
+            L.append("        });")
+        L.append("    }\n}")
+        return "\n".join(L)
+
+    # ================================================================== #
+    #        INITIALIZER PATCHES                                         #
+    # ================================================================== #
 
     def update_mod_initializer(self, project_dir, pkg):
-        self._patch_initializer(
-            project_dir, f"{pkg}.TutorialItems.initialize();", "items"
-        )
+        self._patch_initializer(project_dir, f"{pkg}.TutorialItems.initialize();")
+
+    def update_mod_initializer_itemgroups(self, project_dir, pkg):
+        if self._custom_groups:
+            self._patch_initializer(
+                project_dir, f"{pkg}.TutorialItemGroups.initialize();"
+            )
 
     def update_mod_initializer_blocks(self, project_dir, pkg):
-        self._patch_initializer(
-            project_dir, f"{pkg}.TutorialBlocks.initialize();", "blocks"
-        )
+        self._patch_initializer(project_dir, f"{pkg}.TutorialBlocks.initialize();")
 
-    def _patch_initializer(self, project_dir, line, kind):
+    def _patch_initializer(self, project_dir, line: str):
         paths = [
             os.path.join(
                 project_dir, "src", "main", "java", "com", "example", "ExampleMod.java"
@@ -273,13 +384,13 @@ public class CustomItem extends Item {{
         ]
         init = next((p for p in paths if os.path.exists(p)), None)
         if not init:
-            print(f"WARNING: ExampleMod.java not found – cannot patch {kind}.")
+            print("WARNING: ExampleMod.java not found – cannot patch initializer.")
             return
         with open(init, "r", encoding="utf-8") as fh:
             txt = fh.read()
         if line in txt:
             return
-        new, n = re.subn(
+        patched, n = re.subn(
             r"(public\s+void\s+onInitialize\s*\(\s*\)\s*\{)",
             r"\1\n        " + line,
             txt,
@@ -287,27 +398,29 @@ public class CustomItem extends Item {{
         )
         if n:
             with open(init, "w", encoding="utf-8") as fh:
-                fh.write(new)
-            print(f"Patched ExampleMod.java for {kind}.")
-        else:
-            print(f"WARNING: could not patch ExampleMod.java for {kind}.")
+                fh.write(patched)
+            print(f"Patched ExampleMod.java – added `{line.strip()}`.")
 
-    # ---------- copy textures, model JSON, lang (items) ---------------- #
+    # ================================================================== #
+    #     COPY TEXTURES / MODELS / LANG (ITEMS & GROUP TRANSLATIONS)     #
+    # ================================================================== #
 
     def copy_texture_and_generate_models(self, project_dir, mod_id):
         assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
-        tex = os.path.join(assets, "textures", "item")
-        mdl = os.path.join(assets, "models", "item")
-        idef = os.path.join(assets, "items")
-        for d in (tex, mdl, idef):
+        tex_dir = os.path.join(assets, "textures", "item")
+        mdl_dir = os.path.join(assets, "models", "item")
+        idef_dir = os.path.join(assets, "items")
+        for d in (tex_dir, mdl_dir, idef_dir):
             os.makedirs(d, exist_ok=True)
 
         for itm in self.registered_items:
             if not itm.texture_path or not os.path.exists(itm.texture_path):
                 print(f"SKIP texture for `{itm.id}`")
                 continue
-            shutil.copy(itm.texture_path, os.path.join(tex, f"{itm.id}.png"))
-            with open(os.path.join(mdl, f"{itm.id}.json"), "w", encoding="utf-8") as fh:
+            shutil.copy(itm.texture_path, os.path.join(tex_dir, f"{itm.id}.png"))
+            with open(
+                os.path.join(mdl_dir, f"{itm.id}.json"), "w", encoding="utf-8"
+            ) as fh:
                 json.dump(
                     {
                         "parent": "minecraft:item/generated",
@@ -317,7 +430,7 @@ public class CustomItem extends Item {{
                     indent=2,
                 )
             with open(
-                os.path.join(idef, f"{itm.id}.json"), "w", encoding="utf-8"
+                os.path.join(idef_dir, f"{itm.id}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
@@ -331,11 +444,11 @@ public class CustomItem extends Item {{
                 )
 
     def update_item_lang_file(self, project_dir, mod_id):
-        lang = os.path.join(
+        lang_dir = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
-        os.makedirs(lang, exist_ok=True)
-        path = os.path.join(lang, "en_us.json")
+        os.makedirs(lang_dir, exist_ok=True)
+        path = os.path.join(lang_dir, "en_us.json")
         try:
             with open(path, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
@@ -346,7 +459,29 @@ public class CustomItem extends Item {{
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
 
-    # =============================== BLOCKS ============================ #
+    def update_item_group_lang_entries(self, project_dir, mod_id):
+        if not self._custom_groups:
+            return
+        lang_dir = os.path.join(
+            project_dir, "src", "main", "resources", "assets", mod_id, "lang"
+        )
+        os.makedirs(lang_dir, exist_ok=True)
+        path = os.path.join(lang_dir, "en_us.json")
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except Exception:
+            data = {}
+        for grp in self._custom_groups:
+            data[f"itemGroup.{mod_id}.{grp.id}"] = grp.name
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(data, fh, indent=2)
+
+    # ================================================================== #
+    #                                BLOCKS                              #
+    # ================================================================== #
+
+    # ---------- Java source generation -------------------------------- #
 
     def create_block_files(self, project_dir, package_path):
         java_src = os.path.join(project_dir, "src", "main", "java")
@@ -362,74 +497,72 @@ public class CustomItem extends Item {{
             fh.write(self._custom_block_src(package_path))
 
     def _tutorial_blocks_src(self, pkg: str) -> str:
-        has_groups = any(getattr(b, "item_group", None) for b in self.registered_blocks)
-        l = []
-        l.append(f"package {pkg};\n")
-        l.append("import net.minecraft.block.Block;")
-        l.append("import net.minecraft.block.AbstractBlock;")
-        l.append("import net.minecraft.block.Blocks;")
-        l.append("import net.minecraft.item.BlockItem;")
-        l.append("import net.minecraft.item.Item;")
-        l.append("import net.minecraft.util.Identifier;")
-        l.append("import net.minecraft.registry.Registry;")
-        l.append("import net.minecraft.registry.RegistryKey;")
-        l.append("import net.minecraft.registry.RegistryKeys;")
-        l.append("import net.minecraft.registry.Registries;")
-        if has_groups:
-            l.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            l.append("import net.minecraft.item.ItemGroups;")
-        l.append("import java.util.function.Function;\n")
-        l.append("public final class TutorialBlocks {")
-        l.append("    private TutorialBlocks() {}\n")
-        for b in self.registered_blocks:
-            const = b.id.upper()
-            l.append(
-                f'    public static final Block {const} = register("{b.id}", '
-                f"CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE)"
-                ".requiresTool(), true);"
+        has_vanila = any(
+            isinstance(getattr(b, "item_group", None), str)
+            for b in self.registered_blocks
+        )
+        L: List[str] = []
+        L.append(f"package {pkg};\n")
+        L.append("import net.minecraft.block.Block;")
+        L.append("import net.minecraft.block.AbstractBlock;")
+        L.append("import net.minecraft.block.Blocks;")
+        L.append("import net.minecraft.item.BlockItem;")
+        L.append("import net.minecraft.item.Item;")
+        L.append("import net.minecraft.util.Identifier;")
+        L.append("import net.minecraft.registry.Registry;")
+        L.append("import net.minecraft.registry.RegistryKey;")
+        L.append("import net.minecraft.registry.RegistryKeys;")
+        L.append("import net.minecraft.registry.Registries;")
+        if has_vanila:
+            L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
+            L.append("import net.minecraft.item.ItemGroups;")
+        L.append("import java.util.function.Function;\n")
+        L.append("public final class TutorialBlocks {")
+        L.append("    private TutorialBlocks() {}\n")
+        for blk in self.registered_blocks:
+            const = blk.id.upper()
+            L.append(
+                f'    public static final Block {const} = register("{blk.id}", '
+                f"CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE).requiresTool(), true);"
             )
-        l.append("")
-        l.append(
-            "    private static Block register(String p, "
-            "Function<AbstractBlock.Settings, Block> f, "
-            "AbstractBlock.Settings s, boolean item) {"
+        L.append("")
+        L.append(
+            "    private static Block register(String p, Function<AbstractBlock.Settings, Block> f, "
+            "AbstractBlock.Settings s, boolean makeItem) {"
         )
-        l.append(
-            f"        RegistryKey<Block> bk = RegistryKey.of(RegistryKeys.BLOCK, "
-            f'Identifier.of("{self.mod_id}", p));'
+        L.append(
+            f'        RegistryKey<Block> bKey = RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("{self.mod_id}", p));'
         )
-        l.append("        s = s.registryKey(bk);")
-        l.append(
-            f"        Block b = Registry.register(Registries.BLOCK, "
-            f'Identifier.of("{self.mod_id}", p), f.apply(s));'
+        L.append("        s = s.registryKey(bKey);")
+        L.append(
+            f'        Block b = Registry.register(Registries.BLOCK, Identifier.of("{self.mod_id}", p), f.apply(s));'
         )
-        l.append("        if (item) {")
-        l.append(
+        L.append("        if (makeItem) {")
+        L.append(
             f'            Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", p), '
             "new BlockItem(b, new Item.Settings().registryKey("
             "RegistryKey.of(RegistryKeys.ITEM, Identifier.of("
             f'"{self.mod_id}", p)))));'
         )
-        l.append("        }")
-        l.append("        return b;")
-        l.append("    }\n")
-        l.append("    public static void initialize() {")
-        if has_groups:
-            groups: dict[str, list[str]] = {}
-            for b in self.registered_blocks:
-                if getattr(b, "item_group", None):
-                    groups.setdefault(b.item_group, []).append(b.id.upper())
+        L.append("        }")
+        L.append("        return b;")
+        L.append("    }\n")
+        L.append("    public static void initialize() {")
+        if has_vanila:
+            groups: Dict[str, List[str]] = defaultdict(list)
+            for blk in self.registered_blocks:
+                if isinstance(blk.item_group, str):
+                    groups[blk.item_group].append(blk.id.upper())
             for g, consts in groups.items():
-                l.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g})"
-                    ".register(e -> {"
+                L.append(
+                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
                 )
                 for c in consts:
-                    l.append(f"            e.add({c}.asItem());")
-                l.append("        });")
-        l.append("    }")
-        l.append("}")
-        return "\n".join(l)
+                    L.append(f"            e.add({c}.asItem());")
+                L.append("        });")
+        L.append("    }")
+        L.append("}")
+        return "\n".join(L)
 
     def _custom_block_src(self, pkg: str) -> str:
         return f"""package {pkg};
@@ -442,7 +575,7 @@ public class CustomBlock extends Block {{
 }}
 """
 
-    # ---------- inject initialize() call into ExampleMod.java ----------- #
+    # ---------- textures / model JSON / lang (blocks) ------------------ #
 
     def copy_block_textures_and_generate_models(self, project_dir, mod_id):
         assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
@@ -464,16 +597,14 @@ public class CustomBlock extends Block {{
             os.makedirs(d, exist_ok=True)
 
         for blk in self.registered_blocks:
-            if not (blk.block_texture_path and os.path.exists(blk.block_texture_path)):
+            if not blk.block_texture_path or not os.path.exists(blk.block_texture_path):
                 print(f"SKIP block `{blk.id}` – missing texture")
                 continue
 
-            # block texture
             shutil.copy(
                 blk.block_texture_path, os.path.join(blk_tex_dir, f"{blk.id}.png")
             )
 
-            # block model
             with open(
                 os.path.join(blk_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
             ) as fh:
@@ -486,7 +617,6 @@ public class CustomBlock extends Block {{
                     indent=2,
                 )
 
-            # blockstate
             with open(
                 os.path.join(blkstate_dir, f"{blk.id}.json"), "w", encoding="utf-8"
             ) as fh:
@@ -496,7 +626,6 @@ public class CustomBlock extends Block {{
                     indent=2,
                 )
 
-            # inventory texture
             inv_src = (
                 blk.inventory_texture_path
                 if blk.inventory_texture_path
@@ -505,7 +634,6 @@ public class CustomBlock extends Block {{
             )
             shutil.copy(inv_src, os.path.join(itm_tex_dir, f"{blk.id}.png"))
 
-            # item model
             with open(
                 os.path.join(itm_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
             ) as fh:
@@ -518,7 +646,6 @@ public class CustomBlock extends Block {{
                     indent=2,
                 )
 
-            # item definition
             with open(
                 os.path.join(itm_def_dir, f"{blk.id}.json"), "w", encoding="utf-8"
             ) as fh:
@@ -534,11 +661,11 @@ public class CustomBlock extends Block {{
                 )
 
     def update_block_lang_file(self, project_dir, mod_id):
-        lang = os.path.join(
+        lang_dir = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
-        os.makedirs(lang, exist_ok=True)
-        path = os.path.join(lang, "en_us.json")
+        os.makedirs(lang_dir, exist_ok=True)
+        path = os.path.join(lang_dir, "en_us.json")
         try:
             with open(path, "r", encoding="utf-8") as fh:
                 data = json.load(fh)
