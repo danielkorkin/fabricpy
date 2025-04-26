@@ -1,15 +1,6 @@
 # fabricpy/__init__.py
 """
-fabricpy – a lightweight helper library for writing Fabric mods in Python.
-
-Public API
-----------
-ModConfig    – configure and compile a mod project
-Item         – base class for simple items
-FoodItem     – edible item helper
-Block        – block helper
-ItemGroup    – helper for custom creative‑inventory tabs
-item_group   – constants for vanilla tabs
+fabricpy – a lightweight helper library for writing Fabric mods in Python.
 """
 
 from .modconfig import ModConfig
@@ -17,6 +8,7 @@ from .item import Item
 from .fooditem import FoodItem
 from .block import Block
 from .itemgroup import ItemGroup
+from .recipejson import RecipeJson  # ← NEW import
 from . import item_group
 
 __all__ = [
@@ -25,5 +17,6 @@ __all__ = [
     "FoodItem",
     "Block",
     "ItemGroup",
+    "RecipeJson",  # ← expose
     "item_group",
 ]

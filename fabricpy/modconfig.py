@@ -1,18 +1,19 @@
 # fabricpy/modconfig.py
 """
-Generates a ready‑to‑build Fabric mod project on disk.
+Generates a ready-to-build Fabric mod project on disk.
 
-* clones (or re‑uses) the Fabric example‑mod template repository
+* clones (or re-uses) the Fabric example-mod template repository
 * rewrites fabric.mod.json with your metadata
 * generates Java for:
       – items & food items
-      – **custom ItemGroups** (creative‑inventory tabs)
+      – **custom ItemGroups** (creative-inventory tabs)
       – blocks (with BlockItems)
-* patches ExampleMod.java so those registries run at game‑init
+* patches ExampleMod.java so those registries run at game-init
 * copies textures & writes model / blockstate JSON files
 * writes / merges language (en_us.json) entries for items, blocks & tabs
+* **NEW:** writes any Recipe JSON attached to an Item, FoodItem or Block
 
-Tested against **Minecraft 1.21.5 + Fabric‑API 0.119.5**.
+Tested against **Minecraft 1.21.5 + Fabric-API 0.119.5**.
 """
 
 from __future__ import annotations
@@ -23,10 +24,11 @@ import re
 import shutil
 import subprocess
 from collections import defaultdict
-from typing import List, Set, Dict
+from typing import Dict, List, Set
 
 from .fooditem import FoodItem
 from .itemgroup import ItemGroup
+from .recipejson import RecipeJson
 
 
 # --------------------------------------------------------------------- #
@@ -58,15 +60,15 @@ class ModConfig:
         self.registered_items: List = []  # Item or FoodItem
         self.registered_blocks: List = []  # Block
 
-    # public helpers ----------------------------------------------------- #
+    # public helpers --------------------------------------------------- #
 
-    def registerItem(self, item):
+    def registerItem(self, item):  # noqa: N802
         self.registered_items.append(item)
 
-    def registerFoodItem(self, food_item: FoodItem):
+    def registerFoodItem(self, food_item: FoodItem):  # noqa: N802
         self.registered_items.append(food_item)
 
-    def registerBlock(self, block):
+    def registerBlock(self, block):  # noqa: N802
         self.registered_blocks.append(block)
 
     # ------------------------------------------------------------------ #
@@ -74,13 +76,13 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def compile(self):
-        # 1) clone template ------------------------------------------------
+        # 1) clone example-mod template ---------------------------------
         if not os.path.exists(self.project_dir):
             self.clone_repository(self.template_repo, self.project_dir)
         else:
             print(f"Directory `{self.project_dir}` already exists – skipping clone.")
 
-        # 2) update fabric.mod.json ---------------------------------------
+        # 2) patch fabric.mod.json --------------------------------------
         meta_path = os.path.join(
             self.project_dir, "src", "main", "resources", "fabric.mod.json"
         )
@@ -95,17 +97,20 @@ class ModConfig:
             },
         )
 
-        # 3) items / food items / custom tabs -----------------------------
+        # 3) items / tabs ------------------------------------------------
         item_pkg = f"com.example.{self.mod_id}.items"
         self.create_item_files(self.project_dir, item_pkg)
         self.create_item_group_files(self.project_dir, item_pkg)
-        self.update_mod_initializer(self.project_dir, item_pkg)  # items
-        self.update_mod_initializer_itemgroups(self.project_dir, item_pkg)  # tabs
+        self.update_mod_initializer(self.project_dir, item_pkg)
+        self.update_mod_initializer_itemgroups(self.project_dir, item_pkg)
         self.copy_texture_and_generate_models(self.project_dir, self.mod_id)
         self.update_item_lang_file(self.project_dir, self.mod_id)
         self.update_item_group_lang_entries(self.project_dir, self.mod_id)
 
-        # 4) blocks --------------------------------------------------------
+        # 3b) recipe JSONs ----------------------------------------------
+        self.write_recipe_files(self.project_dir, self.mod_id)
+
+        # 4) blocks ------------------------------------------------------
         if self.registered_blocks:
             blk_pkg = f"com.example.{self.mod_id}.blocks"
             self.create_block_files(self.project_dir, blk_pkg)
@@ -116,13 +121,17 @@ class ModConfig:
         print("\n🎉  Mod project compilation complete.")
 
     # ------------------------------------------------------------------ #
-    # low‑level helpers                                                  #
+    # git helper                                                         #
     # ------------------------------------------------------------------ #
 
     def clone_repository(self, repo_url, dst):
         print(f"Cloning template into `{dst}` …")
         subprocess.check_call(["git", "clone", repo_url, dst])
         print("Template cloned.\n")
+
+    # ------------------------------------------------------------------ #
+    # fabric.mod.json helper                                             #
+    # ------------------------------------------------------------------ #
 
     def update_mod_metadata(self, path, data):
         if not os.path.exists(path):
@@ -134,6 +143,40 @@ class ModConfig:
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(meta, fh, indent=2)
         print("Updated fabric.mod.json\n")
+
+    # ------------------------------------------------------------------ #
+    #                       NEW  –  RECIPE FILES                         #
+    # ------------------------------------------------------------------ #
+
+    def write_recipe_files(self, project_dir: str, mod_id: str) -> None:
+        """
+        Write each RecipeJson attached to any registered object into
+
+            data/<mod>/recipe/<filename>.json   (singular folder since 1.21)
+
+        The file-name must NOT contain a namespace; if the result id is
+        namespaced (e.g. "testmod:poison_apple"), only the path part is used.
+        """
+        objs = [
+            *[i for i in self.registered_items if getattr(i, "recipe", None)],
+            *[b for b in self.registered_blocks if getattr(b, "recipe", None)],
+        ]
+        if not objs:
+            return
+
+        base = os.path.join(
+            project_dir, "src", "main", "resources", "data", mod_id, "recipe"
+        )
+        os.makedirs(base, exist_ok=True)
+
+        for obj in objs:
+            r: RecipeJson = obj.recipe  # type: ignore[attr-defined]
+            identifier = r.result_id or obj.id
+            filename = identifier.split(":", 1)[-1] + ".json"
+            path = os.path.join(base, filename)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(r.text)
+            print(f"  ✔ wrote recipe → {os.path.relpath(path, project_dir)}")
 
     # ================================================================== #
     #                          ITEMS  &  FOOD                            #
@@ -284,7 +327,6 @@ public class CustomItem extends Item {{
             fh.write(self._tutorial_itemgroups_src(package_path))
 
     def _tutorial_itemgroups_src(self, pkg: str) -> str:
-        # detect if blocks are referenced so we can import TutorialBlocks
         blocks_referenced = any(
             isinstance(blk.item_group, ItemGroup) for blk in self.registered_blocks
         )
@@ -306,7 +348,6 @@ public class CustomItem extends Item {{
         L.append("\npublic final class TutorialItemGroups {")
         L.append("    private TutorialItemGroups() {}\n")
 
-        # build (group -> expr‑strings) mapping
         group_entries: Dict[ItemGroup, List[str]] = defaultdict(list)
         for itm in self.registered_items:
             if isinstance(itm.item_group, ItemGroup):
