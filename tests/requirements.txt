@@ -1,0 +1,10 @@
+# Requirements for running fabricpy tests
+# No external dependencies required for basic unit tests
+# The tests use only Python standard library modules
+
+# Optional: If you want to add test coverage reporting
+# coverage>=6.0
+
+# Optional: If you want more advanced testing features
+# pytest>=7.0
+# pytest-cov>=4.0

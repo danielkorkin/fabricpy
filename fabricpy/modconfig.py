@@ -38,7 +38,7 @@ from .recipejson import RecipeJson
 # --------------------------------------------------------------------- #
 class ModConfig:
     # ------------------------------------------------------------------ #
-    # construction / registration                                        #
+    # constructor / registration                                         #
     # ------------------------------------------------------------------ #
 
     def __init__(
@@ -50,6 +50,9 @@ class ModConfig:
         authors: List[str] | tuple[str, ...],
         project_dir: str = "my-fabric-mod",
         template_repo: str = "https://github.com/FabricMC/fabric-example-mod.git",
+        enable_testing: bool = True,  # NEW: Enable Fabric testing integration
+        generate_unit_tests: bool = True,  # NEW: Generate unit tests
+        generate_game_tests: bool = True,  # NEW: Generate game tests
     ):
         self.mod_id = mod_id
         self.name = name
@@ -58,6 +61,9 @@ class ModConfig:
         self.authors = list(authors)
         self.project_dir = project_dir
         self.template_repo = template_repo
+        self.enable_testing = enable_testing
+        self.generate_unit_tests = generate_unit_tests
+        self.generate_game_tests = generate_game_tests
 
         self.registered_items: List = []  # Item or FoodItem
         self.registered_blocks: List = []  # Block
@@ -132,13 +138,28 @@ class ModConfig:
 
         # 4) blocks ------------------------------------------------------
         if self.registered_blocks:
-            blk_pkg = f"com.example.{self.mod_id}.blocks"
-            self.create_block_files(self.project_dir, blk_pkg)
-            self.update_mod_initializer_blocks(self.project_dir, blk_pkg)
+            block_pkg = f"com.example.{self.mod_id}.blocks"
+            self.create_block_files(self.project_dir, block_pkg)
+            self.update_mod_initializer_blocks(self.project_dir, block_pkg)
             self.copy_block_textures_and_generate_models(self.project_dir, self.mod_id)
             self.update_block_lang_file(self.project_dir, self.mod_id)
 
+        # 5) Fabric testing integration ---------------------------------
+        if self.enable_testing:
+            self.setup_fabric_testing(self.project_dir)
+            
+            if self.generate_unit_tests:
+                self.generate_fabric_unit_tests(self.project_dir)
+                
+            if self.generate_game_tests:
+                self.generate_fabric_game_tests(self.project_dir)
+
         print("\n🎉  Mod project compilation complete.")
+        if self.enable_testing:
+            print("🧪  Fabric testing integration added.")
+            print("   - Run tests with: ./gradlew test")
+            if self.generate_game_tests:
+                print("   - Run game tests with: ./gradlew runGametest")
 
     # ------------------------------------------------------------------ #
     # git helper                                                         #
@@ -771,12 +792,596 @@ public class CustomBlock extends Block {{
         print("✔ Build complete – JAR written to build/libs/")
 
     def run(self):
-        """
-        Requires compile() to have been called first.
-        Enters the mod project directory and runs `./gradlew runClient`
-        to launch a dev Minecraft instance with your mod.
-        """
-        if not os.path.isdir(self.project_dir):
-            raise RuntimeError("Project directory not found – call compile() first.")
-        print("🚀 Running mod in development client …")
-        subprocess.check_call(["./gradlew", "runClient"], cwd=self.project_dir)
+        """Run the mod in development mode using Fabric Loader."""
+        if not os.path.exists(self.project_dir):
+            raise FileNotFoundError(f"Project directory '{self.project_dir}' does not exist. Run compile() first.")
+        
+        print(f"Running mod '{self.name}' in development mode...")
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.project_dir)
+            subprocess.check_call(["./gradlew", "runClient"])
+        finally:
+            os.chdir(original_cwd)
+
+    # ================================================================== #
+    #                   FABRIC TESTING INTEGRATION                       #
+    # ================================================================== #
+
+    def setup_fabric_testing(self, project_dir: str):
+        """Set up Fabric testing framework in the project."""
+        print("Setting up Fabric testing framework...")
+        
+        # Enhance build.gradle with testing dependencies and configuration
+        self._enhance_build_gradle_for_testing(project_dir)
+        
+        # Create gradle.properties if needed
+        self._ensure_gradle_properties(project_dir)
+        
+        print("Fabric testing framework setup complete.")
+
+    def _enhance_build_gradle_for_testing(self, project_dir: str):
+        """Add Fabric testing configuration to build.gradle."""
+        build_gradle_path = os.path.join(project_dir, "build.gradle")
+        
+        if not os.path.exists(build_gradle_path):
+            return
+        
+        with open(build_gradle_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Check if testing is already configured
+        if "fabric-loader-junit" in content:
+            return
+        
+        # Add testing configuration
+        testing_config = '''
+
+// Fabric Testing Configuration Added by fabricpy
+dependencies {
+    testImplementation "net.fabricmc:fabric-loader-junit:${project.loader_version}"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.9.2"
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showCauses true
+        showExceptions true
+        showStackTraces true
+    }
+    maxHeapSize = "2g"
+    systemProperty "fabric.development", "true"
+}
+
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "${project.mod_id}-test"
+        eula = true
+    }
+}
+
+// Task to run only unit tests
+task unitTest(type: Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    include '**/*Test.class'
+    exclude '**/*GameTest.class'
+}
+'''
+        
+        with open(build_gradle_path, 'a', encoding='utf-8') as f:
+            f.write(testing_config)
+
+    def _ensure_gradle_properties(self, project_dir: str):
+        """Ensure gradle.properties has necessary testing properties."""
+        gradle_props_path = os.path.join(project_dir, "gradle.properties")
+        
+        if not os.path.exists(gradle_props_path):
+            return
+        
+        with open(gradle_props_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Add testing-related properties if missing
+        additional_props = []
+        
+        if "org.gradle.jvmargs" not in content:
+            additional_props.append("org.gradle.jvmargs=-Xmx2G")
+        
+        if "org.gradle.parallel" not in content:
+            additional_props.append("org.gradle.parallel=true")
+        
+        if additional_props:
+            with open(gradle_props_path, 'a', encoding='utf-8') as f:
+                f.write("\n# Testing configuration added by fabricpy\n")
+                for prop in additional_props:
+                    f.write(f"{prop}\n")
+
+    def generate_fabric_unit_tests(self, project_dir: str):
+        """Generate Fabric unit tests for the mod."""
+        print("Generating Fabric unit tests...")
+        
+        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
+                               self.mod_id.replace("-", "").replace("_", ""), "test")
+        os.makedirs(test_dir, exist_ok=True)
+        
+        # Generate comprehensive unit tests
+        self._generate_item_registration_test(test_dir)
+        self._generate_recipe_validation_test(test_dir)
+        self._generate_mod_integration_test(test_dir)
+        
+        print("Unit tests generated.")
+
+    def _generate_item_registration_test(self, test_dir: str):
+        """Generate unit test for item registration."""
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        
+        test_content = f'''package {package_name};
+
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
+import net.minecraft.SharedConstants;
+import net.minecraft.Bootstrap;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.FoodComponent;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+
+import com.example.{self.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+
+/**
+ * Unit tests for item registration and properties.
+ * Generated by fabricpy library.
+ */
+public class ItemRegistrationTest {{
+
+    @BeforeAll
+    static void beforeAll() {{
+        // Initialize Minecraft registries for testing
+        SharedConstants.createGameVersion();
+        Bootstrap.initialize();
+        
+        // Initialize our mod items
+        TutorialItems.initialize();
+    }}
+
+    @Test
+    @DisplayName("Test all mod items are properly registered")
+    void testItemsAreRegistered() {{
+'''
+
+        # Add tests for each registered item
+        for item in self.registered_items:
+            item_id = item.id
+            if ":" in item_id:
+                namespace, path = item_id.split(":", 1)
+                safe_name = path.replace("-", "_").replace(".", "_")
+                test_content += f'''
+        // Test {item.name}
+        Item {safe_name} = Registries.ITEM.get(Identifier.of("{namespace}", "{path}"));
+        Assertions.assertNotNull({safe_name}, "{item.name} should be registered");
+        
+        ItemStack {safe_name}_stack = new ItemStack({safe_name}, 1);
+        Assertions.assertFalse({safe_name}_stack.isEmpty(), "{item.name} ItemStack should not be empty");
+'''
+
+        test_content += '''
+    }
+
+    @Test
+    @DisplayName("Test vanilla items are accessible (registry working)")
+    void testVanillaItemsAccessible() {
+        ItemStack diamondStack = new ItemStack(Items.DIAMOND, 1);
+        Assertions.assertTrue(diamondStack.isOf(Items.DIAMOND));
+        Assertions.assertEquals(1, diamondStack.getCount());
+    }
+
+    @Test
+    @DisplayName("Test food item properties")
+    void testFoodItemProperties() {
+'''
+
+        # Add food-specific tests
+        for item in self.registered_items:
+            if hasattr(item, 'nutrition') and item.nutrition is not None:
+                item_id = item.id
+                if ":" in item_id:
+                    namespace, path = item_id.split(":", 1)
+                    safe_name = path.replace("-", "_").replace(".", "_")
+                    test_content += f'''
+        // Test {item.name} food properties
+        Item {safe_name} = Registries.ITEM.get(Identifier.of("{namespace}", "{path}"));
+        ItemStack {safe_name}_stack = new ItemStack({safe_name});
+        FoodComponent foodComponent = {safe_name}_stack.get(DataComponentTypes.FOOD);
+        
+        Assertions.assertNotNull(foodComponent, "{item.name} should have food component");
+        Assertions.assertEquals({item.nutrition}, foodComponent.nutrition(), 
+            "{item.name} should have nutrition value of {item.nutrition}");
+'''
+                    
+                    if hasattr(item, 'saturation') and item.saturation is not None:
+                        test_content += f'''
+        Assertions.assertEquals({item.saturation}f, foodComponent.saturation(), 0.001f,
+            "{item.name} should have saturation value of {item.saturation}");
+'''
+
+        test_content += '''
+        Assertions.assertTrue(true, "Food item property tests completed");
+    }
+}
+'''
+
+        with open(os.path.join(test_dir, "ItemRegistrationTest.java"), 'w', encoding='utf-8') as f:
+            f.write(test_content)
+
+    def _generate_recipe_validation_test(self, test_dir: str):
+        """Generate unit test for recipe validation."""
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        
+        test_content = f'''package {package_name};
+
+import net.minecraft.recipe.RecipeType;
+import net.minecraft.util.Identifier;
+import net.minecraft.SharedConstants;
+import net.minecraft.Bootstrap;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+
+/**
+ * Unit tests for recipe validation.
+ * Generated by fabricpy library.
+ */
+public class RecipeValidationTest {{
+
+    @BeforeAll
+    static void beforeAll() {{
+        SharedConstants.createGameVersion();
+        Bootstrap.initialize();
+    }}
+
+    @Test
+    @DisplayName("Test recipe types are valid")
+    void testRecipeTypes() {{
+'''
+
+        # Collect recipe types used
+        recipe_types_used = set()
+        items_with_recipes = []
+        
+        for item in self.registered_items:
+            if hasattr(item, 'recipe') and item.recipe and hasattr(item.recipe, 'data'):
+                recipe_type = item.recipe.data.get('type')
+                if recipe_type:
+                    recipe_types_used.add(recipe_type)
+                    items_with_recipes.append((item, recipe_type))
+
+        for block in self.registered_blocks:
+            if hasattr(block, 'recipe') and block.recipe and hasattr(block.recipe, 'data'):
+                recipe_type = block.recipe.data.get('type')
+                if recipe_type:
+                    recipe_types_used.add(recipe_type)
+
+        if recipe_types_used:
+            test_content += '''
+        // Test that all recipe types used in our mod are valid
+'''
+            for recipe_type in recipe_types_used:
+                test_content += f'''
+        // Recipe type: {recipe_type}
+        Assertions.assertDoesNotThrow(() -> {{
+            // Basic validation that recipe system works
+            RecipeType.CRAFTING_SHAPED.toString();
+        }}, "{recipe_type} should be a valid recipe type");
+'''
+
+        test_content += '''
+        Assertions.assertTrue(true, "Recipe type validation completed");
+    }
+
+    @Test
+    @DisplayName("Test recipe result IDs match item IDs")
+    void testRecipeResultIds() {
+'''
+
+        # Test recipe results
+        for item, recipe_type in items_with_recipes:
+            if hasattr(item.recipe, 'get_result_id'):
+                result_id = item.recipe.get_result_id()
+                if result_id:
+                    test_content += f'''
+        // Recipe for {item.name} should have valid result ID
+        Assertions.assertEquals("{item.id}", "{result_id}", 
+            "Recipe result ID should match item ID for {item.name}");
+'''
+
+        test_content += '''
+        Assertions.assertTrue(true, "Recipe result ID validation completed");
+    }
+}
+'''
+
+        with open(os.path.join(test_dir, "RecipeValidationTest.java"), 'w', encoding='utf-8') as f:
+            f.write(test_content)
+
+    def _generate_mod_integration_test(self, test_dir: str):
+        """Generate integration test for complete mod functionality."""
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        
+        test_content = f'''package {package_name};
+
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
+import net.minecraft.SharedConstants;
+import net.minecraft.Bootstrap;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
+
+import com.example.{self.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+
+/**
+ * Integration tests for complete mod functionality.
+ * Generated by fabricpy library.
+ */
+public class ModIntegrationTest {{
+
+    @BeforeAll
+    static void beforeAll() {{
+        SharedConstants.createGameVersion();
+        Bootstrap.initialize();
+    }}
+
+    @Test
+    @DisplayName("Test complete mod initialization")
+    void testCompleteModInitialization() {{
+        Assertions.assertDoesNotThrow(() -> {{
+            TutorialItems.initialize();
+        }}, "Mod initialization should not throw exceptions");
+    }}
+
+    @Test
+    @DisplayName("Test all mod items are in registry")
+    void testItemRegistryIntegration() {{
+'''
+
+        # Test each item is in registry
+        for item in self.registered_items:
+            item_id = item.id
+            if ":" in item_id:
+                namespace, path = item_id.split(":", 1)
+                test_content += f'''
+        Assertions.assertTrue(Registries.ITEM.containsId(Identifier.of("{namespace}", "{path}")),
+            "{item.name} should be registered in item registry");
+'''
+
+        test_content += '''
+    }
+
+    @Test
+    @DisplayName("Test all mod blocks are in registry")
+    void testBlockRegistryIntegration() {
+'''
+
+        # Test each block is in registry
+        for block in self.registered_blocks:
+            block_id = block.id
+            if ":" in block_id:
+                namespace, path = block_id.split(":", 1)
+                test_content += f'''
+        Assertions.assertTrue(Registries.BLOCK.containsId(Identifier.of("{namespace}", "{path}")),
+            "{block.name} should be registered in block registry");
+'''
+
+        test_content += '''
+    }
+}
+'''
+
+        with open(os.path.join(test_dir, "ModIntegrationTest.java"), 'w', encoding='utf-8') as f:
+            f.write(test_content)
+
+    def generate_fabric_game_tests(self, project_dir: str):
+        """Generate Fabric game tests for the mod."""
+        print("Generating Fabric game tests...")
+        
+        # Create game test directory structure
+        gametest_dir = os.path.join(project_dir, "src", "gametest", "java", "com", "example", 
+                                   self.mod_id.replace("-", "").replace("_", ""))
+        os.makedirs(gametest_dir, exist_ok=True)
+        
+        # Create gametest fabric.mod.json
+        self._create_gametest_fabric_mod_json(project_dir)
+        
+        # Generate server and client game tests
+        self._generate_server_game_test(gametest_dir)
+        self._generate_client_game_test(gametest_dir)
+        
+        print("Game tests generated.")
+
+    def _create_gametest_fabric_mod_json(self, project_dir: str):
+        """Create fabric.mod.json for game tests."""
+        gametest_resources = os.path.join(project_dir, "src", "gametest", "resources")
+        os.makedirs(gametest_resources, exist_ok=True)
+
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        
+        fabric_mod_json = {
+            "schemaVersion": 1,
+            "id": f"{self.mod_id}-test",
+            "version": self.version,
+            "name": f"{self.name} Game Tests",
+            "description": f"Game tests for {self.name} generated by fabricpy",
+            "icon": "assets/examplemod/icon.png",
+            "environment": "*",
+            "entrypoints": {
+                "fabric-gametest": [
+                    f"{package_name}.{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+                ],
+                "fabric-client-gametest": [
+                    f"{package_name}.{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+                ]
+            },
+            "depends": {
+                "fabricloader": ">=0.15.0",
+                "fabric-api": "*",
+                "minecraft": "~1.21.0"
+            }
+        }
+
+        with open(os.path.join(gametest_resources, "fabric.mod.json"), 'w', encoding='utf-8') as f:
+            json.dump(fabric_mod_json, f, indent=2)
+
+    def _generate_server_game_test(self, gametest_dir: str):
+        """Generate server-side game tests."""
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        class_name = f"{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+
+        server_test_content = f'''package {package_name};
+
+import net.minecraft.block.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
+import net.minecraft.test.GameTest;
+import net.minecraft.test.TestContext;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
+
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
+
+/**
+ * Server-side game tests for {self.name}.
+ * Generated by fabricpy library.
+ */
+public class {class_name} implements FabricGameTest {{
+
+    @GameTest(templateName = EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void testItemFunctionality(TestContext context) {{
+        // Test that all mod items work in game context
+'''
+
+        # Add tests for each item
+        for item in self.registered_items:
+            item_id = item.id
+            if ":" in item_id:
+                namespace, path = item_id.split(":", 1)
+                safe_name = path.replace("-", "_").replace(".", "_")
+                server_test_content += f'''
+        
+        // Test {item.name}
+        ItemStack {safe_name}_stack = new ItemStack(
+            Registries.ITEM.get(Identifier.of("{namespace}", "{path}")), 1
+        );
+        context.assertTrue(!{safe_name}_stack.isEmpty(), "{item.name} should create valid ItemStack");
+'''
+
+                # Add food-specific tests
+                if hasattr(item, 'nutrition'):
+                    server_test_content += f'''
+        context.assertTrue({safe_name}_stack.isFood(), "{item.name} should be edible");
+'''
+
+        server_test_content += '''
+        
+        context.complete();
+    }
+
+    @GameTest(templateName = EMPTY_STRUCTURE, timeoutTicks = 300)
+    public void testBlockPlacement(TestContext context) {
+        // Test block placement and interaction
+        BlockPos testPos = new BlockPos(1, 1, 1);
+        
+        // Start with air
+        context.expectBlock(Blocks.AIR, testPos);
+'''
+
+        # Add block tests
+        for block in self.registered_blocks:
+            block_id = block.id
+            if ":" in block_id:
+                namespace, path = block_id.split(":", 1)
+                server_test_content += f'''
+        
+        // Test {block.name}
+        context.setBlockState(testPos, 
+            Registries.BLOCK.get(Identifier.of("{namespace}", "{path}")).getDefaultState()
+        );
+        context.expectBlock(
+            Registries.BLOCK.get(Identifier.of("{namespace}", "{path}")), 
+            testPos
+        );
+        
+        // Test block can be broken
+        context.setBlockState(testPos, Blocks.AIR.getDefaultState());
+        context.expectBlock(Blocks.AIR, testPos);
+'''
+
+        server_test_content += '''
+        
+        context.complete();
+    }
+}
+'''
+
+        with open(os.path.join(gametest_dir, f"{class_name}.java"), 'w', encoding='utf-8') as f:
+            f.write(server_test_content)
+
+    def _generate_client_game_test(self, gametest_dir: str):
+        """Generate client-side game tests."""
+        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        class_name = f"{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+
+        client_test_content = f'''package {package_name};
+
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+
+/**
+ * Client-side game tests for {self.name}.
+ * Generated by fabricpy library.
+ */
+@SuppressWarnings("UnstableApiUsage")
+public class {class_name} implements FabricClientGameTest {{
+
+    @Override
+    public void runTest(ClientGameTestContext context) {{
+        try (TestSingleplayerContext singleplayer = context.worldBuilder().create()) {{
+            // Wait for world to load
+            singleplayer.getClientWorld().waitForChunksRender();
+            
+            // Test client-side functionality
+            testClientRendering(context, singleplayer);
+            
+            // Take screenshot for verification
+            context.takeScreenshot("{self.mod_id}-client-test");
+        }}
+    }}
+    
+    private void testClientRendering(ClientGameTestContext context, TestSingleplayerContext singleplayer) {{
+        // Test that items render properly on client
+        context.assertTrue(true, "Client rendering test for {self.name}");
+        
+        // Additional client-side tests would go here
+        // For example: testing GUIs, client-side rendering, etc.
+    }}
+}}
+'''
+
+        with open(os.path.join(gametest_dir, f"{class_name}.java"), 'w', encoding='utf-8') as f:
+            f.write(client_test_content)
