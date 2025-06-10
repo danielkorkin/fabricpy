@@ -37,6 +37,54 @@ from .recipejson import RecipeJson
 #                             ModConfig                                 #
 # --------------------------------------------------------------------- #
 class ModConfig:
+    """Main configuration class for generating Fabric mod projects.
+
+    This class handles the entire process of creating a Minecraft Fabric mod from
+    Python definitions. It manages mod metadata, item/block registration, Java code
+    generation, texture processing, and project compilation.
+
+    The class supports:
+    - Cloning and configuring the Fabric example-mod template
+    - Registering items, food items, and blocks with custom properties
+    - Generating Java source files for all registered components
+    - Processing textures and generating model/blockstate JSON files
+    - Creating recipe JSON files from RecipeJson objects
+    - Setting up Fabric testing framework with unit and game tests
+    - Building and running the mod in development mode
+
+    Attributes:
+        mod_id (str): Unique identifier for the mod.
+        name (str): Display name of the mod.
+        description (str): Description of what the mod does.
+        version (str): Version string for the mod.
+        authors (List[str]): List of mod authors.
+        project_dir (str): Directory where the mod project will be generated.
+        template_repo (str): Git repository URL for the Fabric template.
+        enable_testing (bool): Whether to set up Fabric testing framework.
+        generate_unit_tests (bool): Whether to generate unit tests.
+        generate_game_tests (bool): Whether to generate game tests.
+        registered_items (List): List of registered Item and FoodItem objects.
+        registered_blocks (List): List of registered Block objects.
+
+    Example:
+        Basic mod setup::
+
+            mod = ModConfig(
+                mod_id="mymod",
+                name="My Awesome Mod",
+                version="1.0.0",
+                description="Adds cool items to Minecraft",
+                authors=["Your Name"]
+            )
+            
+            # Register an item
+            item = Item(id="mymod:cool_item", name="Cool Item")
+            mod.registerItem(item)
+            
+            # Compile and run
+            mod.compile()
+            mod.run()
+    """
     # ------------------------------------------------------------------ #
     # constructor / registration                                         #
     # ------------------------------------------------------------------ #
@@ -54,6 +102,38 @@ class ModConfig:
         generate_unit_tests: bool = True,  # NEW: Generate unit tests
         generate_game_tests: bool = True,  # NEW: Generate game tests
     ):
+        """Initialize a new ModConfig instance.
+
+        Args:
+            mod_id (str): Unique identifier for the mod. Must be valid for Minecraft
+                namespaces (lowercase, no spaces, alphanumeric + underscore/hyphen).
+            name (str): Human-readable display name for the mod.
+            description (str): Brief description of what the mod does.
+            version (str): Version string for the mod (e.g., "1.0.0").
+            authors (List[str] | tuple[str, ...]): List or tuple of author names.
+            project_dir (str, optional): Directory name for the generated mod project.
+                Defaults to "my-fabric-mod".
+            template_repo (str, optional): Git repository URL for the Fabric template.
+                Defaults to the official Fabric example-mod repository.
+            enable_testing (bool, optional): Whether to set up Fabric testing framework.
+                Defaults to True.
+            generate_unit_tests (bool, optional): Whether to generate unit tests for
+                registered items and blocks. Defaults to True.
+            generate_game_tests (bool, optional): Whether to generate Fabric game tests
+                that run in a Minecraft environment. Defaults to True.
+
+        Example:
+            Creating a mod configuration::
+
+                config = ModConfig(
+                    mod_id="awesome_mod",
+                    name="Awesome Mod",
+                    description="Makes Minecraft more awesome",  
+                    version="1.2.3",
+                    authors=["Alice", "Bob"],
+                    project_dir="my-awesome-mod"
+                )
+        """
         self.mod_id = mod_id
         self.name = name
         self.description = description
@@ -71,12 +151,57 @@ class ModConfig:
     # public helpers --------------------------------------------------- #
 
     def registerItem(self, item):  # noqa: N802
+        """Register an Item instance with this mod.
+
+        Args:
+            item (Item): The Item instance to register. This can be a basic Item
+                or any subclass such as FoodItem.
+
+        Example:
+            Registering a basic item::
+
+                item = Item(id="mymod:stone_sword", name="Stone Sword")
+                mod.registerItem(item)
+        """
         self.registered_items.append(item)
 
     def registerFoodItem(self, food_item: FoodItem):  # noqa: N802
+        """Register a FoodItem instance with this mod.
+
+        Args:
+            food_item (FoodItem): The FoodItem instance to register. This is a
+                convenience method that's equivalent to registerItem() for food items.
+
+        Example:
+            Registering a food item::
+
+                apple = FoodItem(
+                    id="mymod:golden_apple",
+                    name="Golden Apple",
+                    nutrition=6,
+                    saturation=0.8
+                )
+                mod.registerFoodItem(apple)
+        """
         self.registered_items.append(food_item)
 
     def registerBlock(self, block):  # noqa: N802
+        """Register a Block instance with this mod.
+
+        Args:
+            block (Block): The Block instance to register. This will generate both
+                the block itself and its corresponding BlockItem.
+
+        Example:
+            Registering a block::
+
+                block = Block(
+                    id="mymod:diamond_block",
+                    name="Diamond Block",
+                    block_texture_path="textures/diamond_block.png"
+                )
+                mod.registerBlock(block)
+        """
         self.registered_blocks.append(block)
 
     # ------------------------------------------------------------------ #
@@ -85,8 +210,22 @@ class ModConfig:
 
     def _to_java_constant(self, id_string: str) -> str:
         """Convert an item/block/group ID to a valid Java constant name.
-        
+
         Replaces invalid characters (like : - .) with underscores and converts to uppercase.
+        Ensures the result is a valid Java identifier.
+
+        Args:
+            id_string (str): The ID string to convert (e.g., "mymod:example_item").
+
+        Returns:
+            str: A valid Java constant name (e.g., "MYMOD_EXAMPLE_ITEM").
+
+        Example:
+            Converting various ID formats::
+
+                config._to_java_constant("mymod:cool_item")  # "MYMOD_COOL_ITEM"
+                config._to_java_constant("my-special.item")  # "MY_SPECIAL_ITEM"
+                config._to_java_constant("123invalid")       # "_123INVALID"
         """
         # Replace common invalid characters with underscores
         valid_name = re.sub(r'[:\-\.\s]+', '_', id_string)
@@ -102,6 +241,35 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def compile(self):
+        """Compile the mod project from registered components.
+
+        This is the main method that orchestrates the entire mod generation process:
+        1. Clones the Fabric example-mod template repository
+        2. Updates fabric.mod.json with mod metadata
+        3. Generates Java source files for items and item groups
+        4. Generates Java source files for blocks (if any)
+        5. Copies textures and generates model/blockstate JSON files
+        6. Writes recipe JSON files for items/blocks with recipes
+        7. Updates language files with item/block/group translations
+        8. Sets up Fabric testing framework (if enabled)
+        9. Generates unit and game tests (if enabled)
+
+        The generated project will be a complete, buildable Fabric mod.
+
+        Raises:
+            subprocess.CalledProcessError: If git clone fails.
+            FileNotFoundError: If the fabric.mod.json template file is missing.
+            OSError: If there are issues with file I/O operations.
+
+        Example:
+            Compiling a mod::
+
+                mod.registerItem(Item(id="mymod:test", name="Test"))
+                mod.compile()  # Creates complete mod project
+                
+        Note:
+            This method must be called before build() or run().
+        """
         # 1) clone example-mod template ---------------------------------
         if not os.path.exists(self.project_dir):
             self.clone_repository(self.template_repo, self.project_dir)
@@ -166,6 +334,23 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def clone_repository(self, repo_url, dst):
+        """Clone a Git repository to the specified destination.
+
+        Args:
+            repo_url (str): The URL of the Git repository to clone.
+            dst (str): The destination directory path where the repository will be cloned.
+
+        Raises:
+            subprocess.CalledProcessError: If the git clone command fails.
+
+        Example:
+            Cloning the Fabric example mod template::
+
+                mod.clone_repository(
+                    "https://github.com/FabricMC/fabric-example-mod.git",
+                    "/path/to/my-mod"
+                )
+        """
         print(f"Cloning template into `{dst}` …")
         subprocess.check_call(["git", "clone", repo_url, dst])
         print("Template cloned.\n")
@@ -175,6 +360,56 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def update_mod_metadata(self, path, data):
+        """Update the fabric.mod.json file with mod metadata.
+
+        Args:
+            path (str): Path to the fabric.mod.json file to update.
+            data (dict): Dictionary containing the metadata to update. Common keys include:
+                - id: Mod identifier
+                - name: Mod display name  
+                - version: Mod version string
+                - description: Mod description
+                - authors: List of author names
+
+        Raises:
+            FileNotFoundError: If the fabric.mod.json file doesn't exist.
+            json.JSONDecodeError: If the existing file contains invalid JSON.
+
+        Example:
+            Updating mod metadata::
+
+                mod.update_mod_metadata(
+                    "src/main/resources/fabric.mod.json",
+                    {
+                        "id": "mymod",
+                        "name": "My Awesome Mod",
+                        "version": "1.0.0",
+                        "description": "An awesome Minecraft mod",
+                        "authors": ["Author Name"]
+                    }
+                )
+        """
+        """Update the fabric.mod.json file with new metadata.
+
+        Args:
+            path (str): Path to the fabric.mod.json file to update.
+            data (dict): Dictionary of metadata fields to update. Common fields
+                include 'id', 'name', 'version', 'description', and 'authors'.
+
+        Raises:
+            FileNotFoundError: If the fabric.mod.json file doesn't exist.
+            json.JSONDecodeError: If the existing file contains invalid JSON.
+
+        Example:
+            Updating mod metadata::
+
+                mod.update_mod_metadata("path/to/fabric.mod.json", {
+                    "id": "mymod",
+                    "name": "My Mod",
+                    "version": "1.0.0",
+                    "authors": ["Me"]
+                })
+        """
         if not os.path.exists(path):
             raise FileNotFoundError("fabric.mod.json not found")
 
@@ -190,13 +425,57 @@ class ModConfig:
     # ------------------------------------------------------------------ #
 
     def write_recipe_files(self, project_dir: str, mod_id: str) -> None:
+        """Write recipe JSON files for items and blocks that have recipes.
+
+        Scans all registered items and blocks for attached RecipeJson objects and
+        writes them as JSON files in the mod's data/recipes directory. Each recipe
+        file is named based on the result item ID.
+
+        Args:
+            project_dir (str): Root directory of the mod project.
+            mod_id (str): The mod's identifier, used in the data directory path.
+
+        Note:
+            - Only items and blocks with non-None recipe attributes are processed
+            - Recipe files are written to data/{mod_id}/recipe/
+            - File names are derived from the recipe's result_id or the item/block ID
+            - Existing recipe files will be overwritten
+
+        Example:
+            Writing recipes after registering items with recipes::
+
+                # Item with recipe
+                item = Item(
+                    id="mymod:diamond_sword",
+                    name="Diamond Sword",
+                    recipe=RecipeJson({...})
+                )
+                mod.registerItem(item)
+                
+                # This will create the recipe file
+                mod.write_recipe_files(project_dir, "mymod")
         """
-        Write each RecipeJson attached to any registered object into
+        """Write recipe JSON files for registered items and blocks.
 
-            data/<mod>/recipe/<filename>.json   (singular folder since 1.21)
+        Searches all registered items and blocks for attached RecipeJson objects
+        and writes them to the mod's recipe data directory. Recipe files are placed
+        in `data/<mod_id>/recipe/` following Minecraft's data pack structure.
 
-        The file-name must NOT contain a namespace; if the result id is
-        namespaced (e.g. "testmod:poison_apple"), only the path part is used.
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for the data path namespace.
+
+        Note:
+            The filename is derived from the recipe's result ID. If the result ID
+            is namespaced (e.g., "testmod:poison_apple"), only the path part is
+            used for the filename (e.g., "poison_apple.json").
+
+        Example:
+            Writing recipe files::
+
+                # Recipes are automatically written during compile()
+                # But can be called manually if needed
+                mod.write_recipe_files("my-mod-project", "mymod")
         """
         objs = [
             *[i for i in self.registered_items if getattr(i, "recipe", None)],
@@ -226,6 +505,46 @@ class ModConfig:
     # ---------- Java source generation -------------------------------- #
 
     def create_item_files(self, project_dir, package_path):
+        """Generate Java source files for item registration and management.
+
+        Creates TutorialItems.java and CustomItem.java files in the specified package.
+        TutorialItems contains registration code for all items, while CustomItem
+        provides a base class for custom item behavior.
+
+        Args:
+            project_dir (str): Root directory of the mod project.
+            package_path (str): Java package path for the generated files
+                (e.g., "com.example.mymod.items").
+
+        Note:
+            Generated files include:
+            - TutorialItems.java: Static registration for all mod items
+            - CustomItem.java: Base class for items with custom behavior
+            
+        Example:
+            Creating item files::
+
+                mod.create_item_files(
+                    "/path/to/mod",
+                    "com.example.mymod.items"
+                )
+        """
+        """Generate Java source files for registered items.
+
+        Creates the TutorialItems.java and CustomItem.java files containing
+        the Java code for all registered items. These files handle item
+        registration, properties, and integration with vanilla item groups.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            package_path (str): The Java package path for the item classes
+                (e.g., "com.example.mymod.items").
+
+        Note:
+            This method is called automatically during compile() and generates:
+            - TutorialItems.java: Registry and initialization code for all items
+            - CustomItem.java: Base custom item class with example behavior
+        """
         java_src = os.path.join(project_dir, "src", "main", "java")
         pkg_dir = os.path.join(java_src, *package_path.split("."))
         os.makedirs(pkg_dir, exist_ok=True)
@@ -241,6 +560,18 @@ class ModConfig:
             fh.write(self._custom_item_src(package_path))
 
     def _tutorial_items_src(self, pkg: str) -> str:
+        """Generate Java source code for the TutorialItems class.
+        
+        Creates a complete Java class that registers all mod items, including
+        proper imports, constant declarations, registration logic, and vanilla
+        item group integration.
+        
+        Args:
+            pkg (str): The Java package name for the generated class.
+            
+        Returns:
+            str: Complete Java source code for the TutorialItems class.
+        """
         has_food = any(isinstance(i, FoodItem) for i in self.registered_items)
         has_vanila = any(
             isinstance(getattr(i, "item_group", None), str)
@@ -320,6 +651,17 @@ class ModConfig:
         return "\n".join(L)
 
     def _custom_item_src(self, pkg: str) -> str:
+        """Generate Java source code for the CustomItem class.
+        
+        Creates a simple custom item class that extends Minecraft's Item class
+        with example behavior (playing a sound when used).
+        
+        Args:
+            pkg (str): The Java package name for the generated class.
+            
+        Returns:
+            str: Complete Java source code for the CustomItem class.
+        """
         return f"""package {pkg};
 
 import net.minecraft.item.Item;
@@ -350,6 +692,22 @@ public class CustomItem extends Item {{
 
     @property
     def _custom_groups(self) -> Set[ItemGroup]:
+        """Get all custom ItemGroup objects used by registered items and blocks.
+
+        Scans through all registered items and blocks to find custom ItemGroup
+        instances (as opposed to vanilla string constants). This is used
+        internally to determine what custom creative tabs need to be generated.
+
+        Returns:
+            Set[ItemGroup]: A set of unique custom ItemGroup objects found
+                across all registered items and blocks.
+
+        Note:
+            This property is used internally by the compilation process to
+            determine which custom item groups need Java code generation.
+            Only ItemGroup instances are included, not string constants
+            referencing vanilla item groups.
+        """
         groups: Set[ItemGroup] = set()
         for itm in self.registered_items:
             if isinstance(itm.item_group, ItemGroup):
@@ -360,6 +718,22 @@ public class CustomItem extends Item {{
         return groups
 
     def create_item_group_files(self, project_dir, package_path):
+        """Generate Java source files for custom item groups (creative tabs).
+
+        Creates the TutorialItemGroups.java file containing Java code for all
+        custom ItemGroup objects. This handles creative tab registration,
+        icon assignment, and adding items/blocks to the custom tabs.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            package_path (str): The Java package path for the item group classes
+                (e.g., "com.example.mymod.items").
+
+        Note:
+            This method is called automatically during compile() when custom
+            ItemGroup objects are detected. If no custom groups exist, no
+            files are generated.
+        """
         if not self._custom_groups:
             return
         java_src = os.path.join(project_dir, "src", "main", "java")
@@ -371,6 +745,18 @@ public class CustomItem extends Item {{
             fh.write(self._tutorial_itemgroups_src(package_path))
 
     def _tutorial_itemgroups_src(self, pkg: str) -> str:
+        """Generate Java source code for the TutorialItemGroups class.
+        
+        Creates a complete Java class that registers all custom item groups
+        (creative tabs) defined in the mod, including proper registry keys,
+        icons, display names, and item additions.
+        
+        Args:
+            pkg (str): The Java package name for the generated class.
+            
+        Returns:
+            str: Complete Java source code for the TutorialItemGroups class.
+        """
         blocks_referenced = any(
             isinstance(blk.item_group, ItemGroup) for blk in self.registered_blocks
         )
@@ -440,15 +826,33 @@ public class CustomItem extends Item {{
     # ================================================================== #
 
     def update_mod_initializer(self, project_dir, pkg):
+        """Add item initialization code to the mod's main initializer.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            pkg (str): The Java package name containing the TutorialItems class.
+        """
         self._patch_initializer(project_dir, f"{pkg}.TutorialItems.initialize();")
 
     def update_mod_initializer_itemgroups(self, project_dir, pkg):
+        """Add item group initialization code to the mod's main initializer.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            pkg (str): The Java package name containing the TutorialItemGroups class.
+        """
         if self._custom_groups:
             self._patch_initializer(
                 project_dir, f"{pkg}.TutorialItemGroups.initialize();"
             )
 
     def update_mod_initializer_blocks(self, project_dir, pkg):
+        """Add block initialization code to the mod's main initializer.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            pkg (str): The Java package name containing the TutorialBlocks class.
+        """
         self._patch_initializer(project_dir, f"{pkg}.TutorialBlocks.initialize();")
 
     def _patch_initializer(self, project_dir, line: str):
@@ -491,6 +895,23 @@ public class CustomItem extends Item {{
     # ================================================================== #
 
     def copy_texture_and_generate_models(self, project_dir, mod_id):
+        """Copy item textures and generate model/item definition JSON files.
+
+        Processes all registered items by copying their texture files to the
+        mod's assets directory and generating the corresponding model and item
+        definition JSON files required by Minecraft's resource pack system.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for asset paths.
+
+        Note:
+            For each item, this method:
+            - Copies the texture PNG file to assets/<mod_id>/textures/item/
+            - Generates a model JSON file in assets/<mod_id>/models/item/
+            - Generates an item definition JSON file in assets/<mod_id>/items/
+            Items without valid texture paths are skipped with a warning.
+        """
         assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
         tex_dir = os.path.join(assets, "textures", "item")
         mdl_dir = os.path.join(assets, "models", "item")
@@ -533,6 +954,31 @@ public class CustomItem extends Item {{
                 )
 
     def update_item_lang_file(self, project_dir, mod_id):
+        """Update the English language file with item translations.
+        
+        Adds or updates translation entries for all registered items in the
+        mod's en_us.json language file.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier for namespacing translations.
+        """
+        """Update the language file with item translations.
+
+        Adds or updates entries in the mod's en_us.json language file for all
+        registered items. This provides the display names shown to players
+        in the game interface.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for translation keys.
+
+        Note:
+            The language file is located at assets/<mod_id>/lang/en_us.json.
+            Translation keys follow the format "item.<mod_id>.<item_path>".
+            If the file doesn't exist, it will be created. Existing entries
+            are preserved and only item entries are added/updated.
+        """
         lang_dir = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
@@ -551,6 +997,30 @@ public class CustomItem extends Item {{
             json.dump(data, fh, indent=2)
 
     def update_item_group_lang_entries(self, project_dir, mod_id):
+        """Update the English language file with item group translations.
+        
+        Adds translation entries for all custom item groups defined in the mod.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier for namespacing translations.
+        """
+        """Update the language file with custom item group translations.
+
+        Adds translation entries for custom ItemGroup objects to the mod's
+        en_us.json language file. This provides the display names shown
+        for custom creative tabs in the creative inventory.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for translation keys.
+
+        Note:
+            Only processes custom ItemGroup objects (not vanilla groups).
+            Translation keys follow the format "itemGroup.<mod_id>.<group_id>".
+            If no custom groups exist, this method returns early without
+            making any changes.
+        """
         if not self._custom_groups:
             return
         lang_dir = os.path.join(
@@ -575,6 +1045,32 @@ public class CustomItem extends Item {{
     # ---------- Java source generation -------------------------------- #
 
     def create_block_files(self, project_dir, package_path):
+        """Generate Java source files for all registered blocks.
+        
+        Creates the TutorialBlocks.java and CustomBlock.java files containing
+        block registration and implementation logic.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            package_path (str): The Java package path for the block classes.
+        """
+        """Generate Java source files for registered blocks.
+
+        Creates the TutorialBlocks.java and CustomBlock.java files containing
+        the Java code for all registered blocks. These files handle block
+        registration, properties, and automatic BlockItem creation.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            package_path (str): The Java package path for the block classes
+                (e.g., "com.example.mymod.blocks").
+
+        Note:
+            This method is called automatically during compile() when blocks
+            are registered and generates:
+            - TutorialBlocks.java: Registry and initialization code for all blocks
+            - CustomBlock.java: Base custom block class extending Minecraft's Block
+        """
         java_src = os.path.join(project_dir, "src", "main", "java")
         pkg_dir = os.path.join(java_src, *package_path.split("."))
         os.makedirs(pkg_dir, exist_ok=True)
@@ -588,6 +1084,18 @@ public class CustomItem extends Item {{
             fh.write(self._custom_block_src(package_path))
 
     def _tutorial_blocks_src(self, pkg: str) -> str:
+        """Generate Java source code for the TutorialBlocks class.
+        
+        Creates a complete Java class that registers all mod blocks, including
+        proper imports, constant declarations, registration logic, and vanilla
+        item group integration.
+        
+        Args:
+            pkg (str): The Java package name for the generated class.
+            
+        Returns:
+            str: Complete Java source code for the TutorialBlocks class.
+        """
         has_vanila = any(
             isinstance(getattr(b, "item_group", None), str)
             for b in self.registered_blocks
@@ -658,6 +1166,16 @@ public class CustomItem extends Item {{
         return "\n".join(L)
 
     def _custom_block_src(self, pkg: str) -> str:
+        """Generate Java source code for the CustomBlock class.
+        
+        Creates a simple custom block class that extends Minecraft's Block class.
+        
+        Args:
+            pkg (str): The Java package name for the generated class.
+            
+        Returns:
+            str: Complete Java source code for the CustomBlock class.
+        """
         return f"""package {pkg};
 
 import net.minecraft.block.Block;
@@ -671,6 +1189,35 @@ public class CustomBlock extends Block {{
     # ---------- textures / model JSON / lang (blocks) ------------------ #
 
     def copy_block_textures_and_generate_models(self, project_dir, mod_id):
+        """Copy block textures and generate model/blockstate JSON files.
+        
+        Processes all registered blocks by copying their texture files and
+        generating the corresponding model, blockstate, and item definition
+        JSON files required by Minecraft's resource pack system.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier for namespacing resources.
+        """
+        """Copy block textures and generate model/blockstate JSON files.
+
+        Processes all registered blocks by copying their texture files and
+        generating the corresponding model, blockstate, and item definition
+        JSON files required for both world rendering and inventory display.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for asset paths.
+
+        Note:
+            For each block, this method:
+            - Copies the block texture to assets/<mod_id>/textures/block/
+            - Generates a block model JSON file in assets/<mod_id>/models/block/
+            - Generates a blockstate JSON file in assets/<mod_id>/blockstates/
+            - Copies the inventory texture to assets/<mod_id>/textures/item/
+            - Generates an item model and definition for the BlockItem
+            Blocks without valid texture paths are skipped with a warning.
+        """
         assets = os.path.join(project_dir, "src", "main", "resources", "assets", mod_id)
         blk_tex_dir = os.path.join(assets, "textures", "block")
         blk_mdl_dir = os.path.join(assets, "models", "block")
@@ -757,6 +1304,33 @@ public class CustomBlock extends Block {{
                 )
 
     def update_block_lang_file(self, project_dir, mod_id):
+        """Update the English language file with block translations.
+        
+        Adds or updates translation entries for all registered blocks in the
+        mod's en_us.json language file. Creates entries for both the block
+        and its corresponding item form.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier for namespacing translations.
+        """
+        """Update the language file with block translations.
+
+        Adds or updates entries in the mod's en_us.json language file for all
+        registered blocks. This provides display names for both the block
+        itself and its corresponding BlockItem.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+            mod_id (str): The mod's identifier, used for translation keys.
+
+        Note:
+            The language file is located at assets/<mod_id>/lang/en_us.json.
+            For each block, two translation keys are added:
+            - "block.<mod_id>.<block_path>": For the block in the world
+            - "item.<mod_id>.<block_path>": For the BlockItem in inventory
+            Both use the same display name from the Block object.
+        """
         lang_dir = os.path.join(
             project_dir, "src", "main", "resources", "assets", mod_id, "lang"
         )
@@ -780,10 +1354,22 @@ public class CustomBlock extends Block {{
     # ------------------------------------------------------------------ #
 
     def build(self):
-        """
-        Requires compile() to have been called first.
-        Enters the mod project directory and runs `./gradlew build`
-        to produce the distributable JAR.
+        """Build the mod JAR file using Gradle.
+
+        Requires compile() to have been called first. Enters the mod project 
+        directory and runs `./gradlew build` to produce the distributable JAR file.
+
+        The built JAR will be located in the `build/libs/` directory of the project.
+
+        Raises:
+            RuntimeError: If the project directory doesn't exist (compile() not called).
+            subprocess.CalledProcessError: If the Gradle build fails.
+
+        Example:
+            Building the mod::
+
+                mod.compile()  # Must be called first
+                mod.build()    # Creates JAR in build/libs/
         """
         if not os.path.isdir(self.project_dir):
             raise RuntimeError("Project directory not found – call compile() first.")
@@ -792,7 +1378,21 @@ public class CustomBlock extends Block {{
         print("✔ Build complete – JAR written to build/libs/")
 
     def run(self):
-        """Run the mod in development mode using Fabric Loader."""
+        """Run the mod in development mode using Fabric Loader.
+
+        Launches a Minecraft client with the mod loaded for testing and development.
+        This uses Gradle's `runClient` task which sets up a development environment.
+
+        Raises:
+            FileNotFoundError: If the project directory doesn't exist (compile() not called).
+            subprocess.CalledProcessError: If the Gradle runClient task fails.
+
+        Example:
+            Running the mod for testing::
+
+                mod.compile()  # Must be called first  
+                mod.run()      # Launches Minecraft with the mod
+        """
         if not os.path.exists(self.project_dir):
             raise FileNotFoundError(f"Project directory '{self.project_dir}' does not exist. Run compile() first.")
         
@@ -809,7 +1409,21 @@ public class CustomBlock extends Block {{
     # ================================================================== #
 
     def setup_fabric_testing(self, project_dir: str):
-        """Set up Fabric testing framework in the project."""
+        """Set up Fabric testing framework in the project.
+
+        Configures the mod project to support Fabric's testing capabilities
+        by enhancing build.gradle with testing dependencies and configuration,
+        and ensuring gradle.properties has the necessary testing properties.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+
+        Note:
+            This method is called automatically during compile() when
+            enable_testing is True. It sets up the foundation for both
+            unit tests and game tests but doesn't generate the test files
+            themselves (see generate_fabric_unit_tests and generate_fabric_game_tests).
+        """
         print("Setting up Fabric testing framework...")
         
         # Enhance build.gradle with testing dependencies and configuration
@@ -902,7 +1516,23 @@ task unitTest(type: Test) {
                     f.write(f"{prop}\n")
 
     def generate_fabric_unit_tests(self, project_dir: str):
-        """Generate Fabric unit tests for the mod."""
+        """Generate Fabric unit tests for the mod.
+
+        Creates comprehensive unit tests that validate item registration,
+        recipe functionality, and mod integration. Tests are generated
+        based on the registered items, blocks, and their properties.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+
+        Note:
+            Generated tests include:
+            - Item registration verification
+            - Food item property validation
+            - Recipe validation and result ID checking
+            - Complete mod integration testing
+            Test files are placed in src/test/java/ following standard conventions.
+        """
         print("Generating Fabric unit tests...")
         
         test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
@@ -1025,7 +1655,15 @@ public class ItemRegistrationTest {{
             f.write(test_content)
 
     def _generate_recipe_validation_test(self, test_dir: str):
-        """Generate unit test for recipe validation."""
+        """Generate unit test for recipe validation.
+        
+        Creates a comprehensive test that validates all recipes associated with
+        registered items and blocks, ensuring they can be properly loaded and
+        processed by Minecraft's recipe system.
+        
+        Args:
+            test_dir (str): Directory where the test file should be generated.
+        """
         package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
         
         test_content = f'''package {package_name};
@@ -1117,7 +1755,15 @@ public class RecipeValidationTest {{
             f.write(test_content)
 
     def _generate_mod_integration_test(self, test_dir: str):
-        """Generate integration test for complete mod functionality."""
+        """Generate integration test for complete mod functionality.
+        
+        Creates a comprehensive integration test that verifies all mod components
+        work together correctly, including item registration, block registration,
+        and cross-component interactions.
+        
+        Args:
+            test_dir (str): Directory where the test file should be generated.
+        """
         package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
         
         test_content = f'''package {package_name};
@@ -1196,7 +1842,23 @@ public class ModIntegrationTest {{
             f.write(test_content)
 
     def generate_fabric_game_tests(self, project_dir: str):
-        """Generate Fabric game tests for the mod."""
+        """Generate Fabric game tests for the mod.
+
+        Creates game tests that run within a Minecraft environment to validate
+        mod functionality in actual gameplay conditions. These tests can
+        interact with the world, place blocks, and test item behavior.
+
+        Args:
+            project_dir (str): The root directory of the mod project.
+
+        Note:
+            Generated game tests include:
+            - Server-side item and block functionality testing
+            - Client-side interaction and rendering validation
+            - Block placement and world interaction tests
+            Game test files are placed in src/gametest/java/ and require
+            a separate fabric.mod.json for the test environment.
+        """
         print("Generating Fabric game tests...")
         
         # Create game test directory structure
