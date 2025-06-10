@@ -12,6 +12,8 @@ Generates a ready-to-build Fabric mod project on disk.
 * copies textures & writes model / blockstate JSON files
 * writes / merges language (en_us.json) entries for items, blocks & tabs
 * **NEW:** writes any Recipe JSON attached to an Item, FoodItem or Block
+* **NEW:** supports `build()` to produce the mod JAR, and `run()` to launch
+            a development client via Gradle.
 
 Tested against **Minecraft 1.21.5 + Fabric-API 0.119.5**.
 """
@@ -70,6 +72,24 @@ class ModConfig:
 
     def registerBlock(self, block):  # noqa: N802
         self.registered_blocks.append(block)
+
+    # ------------------------------------------------------------------ #
+    # helper for creating valid Java identifiers                        #
+    # ------------------------------------------------------------------ #
+
+    def _to_java_constant(self, id_string: str) -> str:
+        """Convert an item/block/group ID to a valid Java constant name.
+        
+        Replaces invalid characters (like : - .) with underscores and converts to uppercase.
+        """
+        # Replace common invalid characters with underscores
+        valid_name = re.sub(r'[:\-\.\s]+', '_', id_string)
+        # Remove any remaining non-alphanumeric characters except underscores
+        valid_name = re.sub(r'[^a-zA-Z0-9_]', '', valid_name)
+        # Ensure it doesn't start with a digit
+        if valid_name and valid_name[0].isdigit():
+            valid_name = '_' + valid_name
+        return valid_name.upper()
 
     # ------------------------------------------------------------------ #
     # main compile routine                                               #
@@ -224,7 +244,7 @@ class ModConfig:
         L.append("    private TutorialItems() {}\n")
 
         for itm in self.registered_items:
-            const = itm.id.upper()
+            const = self._to_java_constant(itm.id)
             if isinstance(itm, FoodItem):
                 b = [
                     f".nutrition({itm.nutrition})",
@@ -241,8 +261,11 @@ class ModConfig:
             else:
                 settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
                 factory = "CustomItem::new"
+            
+            # Extract just the path part if the ID is namespaced
+            item_path = itm.id.split(":", 1)[-1]
             L.append(
-                f'    public static final Item {const} = register("{itm.id}", '
+                f'    public static final Item {const} = register("{item_path}", '
                 f"{factory}, {settings});"
             )
         L.append("")
@@ -263,7 +286,7 @@ class ModConfig:
             groups: Dict[str, List[str]] = defaultdict(list)
             for itm in self.registered_items:
                 if isinstance(itm.item_group, str):
-                    groups[itm.item_group].append(itm.id.upper())
+                    groups[itm.item_group].append(self._to_java_constant(itm.id))
             for g, consts in groups.items():
                 L.append(
                     f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
@@ -351,21 +374,21 @@ public class CustomItem extends Item {{
         group_entries: Dict[ItemGroup, List[str]] = defaultdict(list)
         for itm in self.registered_items:
             if isinstance(itm.item_group, ItemGroup):
-                group_entries[itm.item_group].append(f"TutorialItems.{itm.id.upper()}")
+                group_entries[itm.item_group].append(f"TutorialItems.{self._to_java_constant(itm.id)}")
         for blk in self.registered_blocks:
             if isinstance(blk.item_group, ItemGroup):
                 group_entries[blk.item_group].append(
-                    f"TutorialBlocks.{blk.id.upper()}.asItem()"
+                    f"TutorialBlocks.{self._to_java_constant(blk.id)}.asItem()"
                 )
 
         for grp in self._custom_groups:
-            const = grp.id.upper()
+            const = self._to_java_constant(grp.id)
             L.append(
                 f"    public static final RegistryKey<ItemGroup> {const}_KEY = "
                 f'RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.of("{self.mod_id}", "{grp.id}"));'
             )
             icon_expr = (
-                f"TutorialItems.{grp.icon_item_id.upper()}"
+                f"TutorialItems.{self._to_java_constant(grp.icon_item_id)}"
                 if grp.icon_item_id
                 else group_entries[grp][0]
             )
@@ -378,7 +401,7 @@ public class CustomItem extends Item {{
 
         L.append("    public static void initialize() {")
         for grp in self._custom_groups:
-            const = grp.id.upper()
+            const = self._to_java_constant(grp.id)
             L.append(
                 f"        Registry.register(Registries.ITEM_GROUP, {const}_KEY, {const});"
             )
@@ -458,26 +481,30 @@ public class CustomItem extends Item {{
             if not itm.texture_path or not os.path.exists(itm.texture_path):
                 print(f"SKIP texture for `{itm.id}`")
                 continue
-            shutil.copy(itm.texture_path, os.path.join(tex_dir, f"{itm.id}.png"))
+            
+            # Extract just the path part if the ID is namespaced
+            item_path = itm.id.split(":", 1)[-1]
+            
+            shutil.copy(itm.texture_path, os.path.join(tex_dir, f"{item_path}.png"))
             with open(
-                os.path.join(mdl_dir, f"{itm.id}.json"), "w", encoding="utf-8"
+                os.path.join(mdl_dir, f"{item_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
                         "parent": "minecraft:item/generated",
-                        "textures": {"layer0": f"{mod_id}:item/{itm.id}"},
+                        "textures": {"layer0": f"{mod_id}:item/{item_path}"},
                     },
                     fh,
                     indent=2,
                 )
             with open(
-                os.path.join(idef_dir, f"{itm.id}.json"), "w", encoding="utf-8"
+                os.path.join(idef_dir, f"{item_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
                         "model": {
                             "type": "minecraft:model",
-                            "model": f"{mod_id}:item/{itm.id}",
+                            "model": f"{mod_id}:item/{item_path}",
                         }
                     },
                     fh,
@@ -496,7 +523,9 @@ public class CustomItem extends Item {{
         except Exception:
             data = {}
         for itm in self.registered_items:
-            data[f"item.{mod_id}.{itm.id}"] = itm.name
+            # Extract just the path part if the ID is namespaced
+            item_path = itm.id.split(":", 1)[-1]
+            data[f"item.{mod_id}.{item_path}"] = itm.name
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
 
@@ -561,9 +590,11 @@ public class CustomItem extends Item {{
         L.append("public final class TutorialBlocks {")
         L.append("    private TutorialBlocks() {}\n")
         for blk in self.registered_blocks:
-            const = blk.id.upper()
+            const = self._to_java_constant(blk.id)
+            # Extract just the path part if the ID is namespaced
+            block_path = blk.id.split(":", 1)[-1]
             L.append(
-                f'    public static final Block {const} = register("{blk.id}", '
+                f'    public static final Block {const} = register("{block_path}", '
                 f"CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE).requiresTool(), true);"
             )
         L.append("")
@@ -593,7 +624,7 @@ public class CustomItem extends Item {{
             groups: Dict[str, List[str]] = defaultdict(list)
             for blk in self.registered_blocks:
                 if isinstance(blk.item_group, str):
-                    groups[blk.item_group].append(blk.id.upper())
+                    groups[blk.item_group].append(self._to_java_constant(blk.id))
             for g, consts in groups.items():
                 L.append(
                     f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
@@ -642,27 +673,30 @@ public class CustomBlock extends Block {{
                 print(f"SKIP block `{blk.id}` – missing texture")
                 continue
 
+            # Extract just the path part if the ID is namespaced
+            block_path = blk.id.split(":", 1)[-1]
+
             shutil.copy(
-                blk.block_texture_path, os.path.join(blk_tex_dir, f"{blk.id}.png")
+                blk.block_texture_path, os.path.join(blk_tex_dir, f"{block_path}.png")
             )
 
             with open(
-                os.path.join(blk_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+                os.path.join(blk_mdl_dir, f"{block_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
                         "parent": "minecraft:block/cube_all",
-                        "textures": {"all": f"{mod_id}:block/{blk.id}"},
+                        "textures": {"all": f"{mod_id}:block/{block_path}"},
                     },
                     fh,
                     indent=2,
                 )
 
             with open(
-                os.path.join(blkstate_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+                os.path.join(blkstate_dir, f"{block_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
-                    {"variants": {"": {"model": f"{mod_id}:block/{blk.id}"}}},
+                    {"variants": {"": {"model": f"{mod_id}:block/{block_path}"}}},
                     fh,
                     indent=2,
                 )
@@ -673,28 +707,28 @@ public class CustomBlock extends Block {{
                 and os.path.exists(blk.inventory_texture_path)
                 else blk.block_texture_path
             )
-            shutil.copy(inv_src, os.path.join(itm_tex_dir, f"{blk.id}.png"))
+            shutil.copy(inv_src, os.path.join(itm_tex_dir, f"{block_path}.png"))
 
             with open(
-                os.path.join(itm_mdl_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+                os.path.join(itm_mdl_dir, f"{block_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
                         "parent": "minecraft:item/generated",
-                        "textures": {"layer0": f"{mod_id}:item/{blk.id}"},
+                        "textures": {"layer0": f"{mod_id}:item/{block_path}"},
                     },
                     fh,
                     indent=2,
                 )
 
             with open(
-                os.path.join(itm_def_dir, f"{blk.id}.json"), "w", encoding="utf-8"
+                os.path.join(itm_def_dir, f"{block_path}.json"), "w", encoding="utf-8"
             ) as fh:
                 json.dump(
                     {
                         "model": {
                             "type": "minecraft:model",
-                            "model": f"{mod_id}:item/{blk.id}",
+                            "model": f"{mod_id}:item/{block_path}",
                         }
                     },
                     fh,
@@ -713,7 +747,36 @@ public class CustomBlock extends Block {{
         except Exception:
             data = {}
         for blk in self.registered_blocks:
-            data[f"block.{mod_id}.{blk.id}"] = blk.name
-            data[f"item.{mod_id}.{blk.id}"] = blk.name
+            # Extract just the path part if the ID is namespaced
+            block_path = blk.id.split(":", 1)[-1]
+            data[f"block.{mod_id}.{block_path}"] = blk.name
+            data[f"item.{mod_id}.{block_path}"] = blk.name
         with open(path, "w", encoding="utf-8") as fh:
             json.dump(data, fh, indent=2)
+
+    # ------------------------------------------------------------------ #
+    # new build / run helpers                                            #
+    # ------------------------------------------------------------------ #
+
+    def build(self):
+        """
+        Requires compile() to have been called first.
+        Enters the mod project directory and runs `./gradlew build`
+        to produce the distributable JAR.
+        """
+        if not os.path.isdir(self.project_dir):
+            raise RuntimeError("Project directory not found – call compile() first.")
+        print("🔨 Building mod JAR …")
+        subprocess.check_call(["./gradlew", "build"], cwd=self.project_dir)
+        print("✔ Build complete – JAR written to build/libs/")
+
+    def run(self):
+        """
+        Requires compile() to have been called first.
+        Enters the mod project directory and runs `./gradlew runClient`
+        to launch a dev Minecraft instance with your mod.
+        """
+        if not os.path.isdir(self.project_dir):
+            raise RuntimeError("Project directory not found – call compile() first.")
+        print("🚀 Running mod in development client …")
+        subprocess.check_call(["./gradlew", "runClient"], cwd=self.project_dir)
