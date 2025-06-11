@@ -1,0 +1,24 @@
+include README.md
+include LICENSE
+include CHANGELOG.md
+include requirements-dev.txt
+include pyproject.toml
+include pytest.ini
+
+recursive-include fabricpy *.py
+recursive-include fabricpy *.md
+recursive-include fabricpy *.txt
+
+recursive-include docs *.rst
+recursive-include docs *.py
+recursive-include docs *.txt
+recursive-include docs Makefile
+recursive-include docs make.bat
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * *.dylib
+recursive-exclude temp *
+recursive-exclude tests *
+recursive-exclude .github *

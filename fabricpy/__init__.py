@@ -44,6 +44,7 @@ Attributes:
 """
 
 from . import item_group
+from .__version__ import __version__
 from .block import Block
 from .fooditem import FoodItem
 from .item import Item
@@ -59,4 +60,5 @@ __all__ = [
     "ItemGroup",
     "RecipeJson",  # ← expose
     "item_group",
+    "__version__",
 ]

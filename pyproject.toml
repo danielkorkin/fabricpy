@@ -1,0 +1,113 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fabricpy"
+dynamic = ["version"]
+description = "A lightweight helper library for writing Fabric mods in Python"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Daniel Korkin", email = "danielkorkin@example.com"}
+]
+maintainers = [
+    {name = "Daniel Korkin", email = "danielkorkin@example.com"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Code Generators",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Java",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+]
+keywords = [
+    "minecraft",
+    "fabric",
+    "mod",
+    "modding",
+    "game-development",
+    "java-generation",
+    "minecraft-forge", 
+    "minecraft-fabric",
+    "mod-development",
+    "code-generator",
+    "python-to-java",
+]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "coverage>=6.0",
+    "pytest-mock>=3.10.0",
+]
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme",
+]
+test = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0", 
+    "coverage>=6.0",
+    "pytest-mock>=3.10.0",
+]
+
+[project.urls]
+Documentation = "https://fabricpy.readthedocs.io/"
+Repository = "https://github.com/danielkorkin/fabricpy"
+"Bug Tracker" = "https://github.com/danielkorkin/fabricpy/issues"
+Coverage = "https://app.codecov.io/gh/danielkorkin/fabricpy"
+Discussions = "https://github.com/danielkorkin/fabricpy/discussions"
+
+[tool.setuptools]
+packages = ["fabricpy"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+fabricpy = ["*.md", "*.txt"]
+
+[tool.setuptools.dynamic]
+version = {attr = "fabricpy.__version__.__version__"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=fabricpy",
+    "--cov-branch",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+
+[tool.coverage.run]
+source = ["fabricpy"]
+omit = [
+    "*/tests/*",
+    "*/temp/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
