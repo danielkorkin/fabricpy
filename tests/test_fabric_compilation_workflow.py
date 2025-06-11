@@ -270,7 +270,8 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             description="Testing Gradle task generation.",
             authors=["fabricpy-test"],
             project_dir=os.path.join(self.temp_dir, "gradle-task-test"),
-            enable_testing=True
+            enable_testing=True,
+            generate_game_tests=True  # Explicitly enable game tests for this test
         )
 
         # Add simple components
