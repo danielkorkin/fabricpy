@@ -1,6 +1,6 @@
-# FabricPy Documentation
+# fabricpy Documentation
 
-This directory contains the Sphinx documentation for FabricPy, with automatic generation from Google-style docstrings.
+This directory contains the Sphinx documentation for fabricpy, with automatic generation from Google-style docstrings.
 
 ## Building Documentation
 

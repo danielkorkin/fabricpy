@@ -1,7 +1,7 @@
 Creating Blocks
 ===============
 
-Blocks are the building components of the Minecraft world. In FabricPy, creating blocks automatically generates both the block itself and its corresponding BlockItem for inventory use.
+Blocks are the building components of the Minecraft world. In fabricpy, creating blocks automatically generates both the block itself and its corresponding BlockItem for inventory use.
 
 Basic Block Creation
 --------------------
@@ -399,7 +399,7 @@ Common Issues
 * **Block not appearing**: Ensure block is registered with ``mod.registerBlock()``
 * **Missing texture**: Check block_texture_path and file existence
 * **Wrong mining behavior**: Verify hardness and requires_tool settings
-* **BlockItem missing**: FabricPy automatically creates BlockItems - check creative tab
+* **BlockItem missing**: fabricpy automatically creates BlockItems - check creative tab
 
 Next Steps
 ----------

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Documentation generation script for FabricPy.
+Documentation generation script for fabricpy.
 
 This script automates the process of generating Sphinx documentation with
-Google-style docstrings for the FabricPy library.
+Google-style docstrings for the fabricpy library.
 """
 
 import os
@@ -36,7 +36,7 @@ def main():
     docs_dir = Path(__file__).parent
     os.chdir(docs_dir)
 
-    print("FabricPy Documentation Generator")
+    print("fabricpy Documentation Generator")
     print("=" * 40)
 
     # Step 1: Clean previous builds

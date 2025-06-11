@@ -6,7 +6,7 @@ Vanilla item groups are the built-in creative tabs that come with Minecraft. Usi
 Available Vanilla Item Groups
 -----------------------------
 
-FabricPy provides access to all vanilla creative tabs through the ``fabricpy.item_group`` module:
+fabricpy provides access to all vanilla creative tabs through the ``fabricpy.item_group`` module:
 
 Core Vanilla Tabs
 ~~~~~~~~~~~~~~~~~

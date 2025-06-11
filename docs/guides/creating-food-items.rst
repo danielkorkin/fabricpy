@@ -1,7 +1,7 @@
 Creating Food Items
 =====================
 
-Food items are special items that players can consume to restore hunger and saturation. FabricPy makes it easy to create food items with various nutritional properties and special effects.
+Food items are special items that players can consume to restore hunger and saturation. fabricpy makes it easy to create food items with various nutritional properties and special effects.
 
 Basic Food Item Creation
 ------------------------

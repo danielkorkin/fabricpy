@@ -1,7 +1,7 @@
 Custom Recipes
 ==============
 
-Recipes define how items and blocks can be crafted, smelted, or created through various game mechanics. FabricPy uses the RecipeJson class to handle Minecraft's recipe system with full support for all recipe types.
+Recipes define how items and blocks can be crafted, smelted, or created through various game mechanics. fabricpy uses the RecipeJson class to handle Minecraft's recipe system with full support for all recipe types.
 
 Understanding Recipe Types
 --------------------------
@@ -447,7 +447,7 @@ Use online tools to create complex recipes:
 
 * `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ - Visual crafting interface
 * `MinecraftJSON <https://www.minecraftjson.com/>`_ - Various JSON generators
-* Always validate generated JSON before using in FabricPy
+* Always validate generated JSON before using in fabricpy
 
 Next Steps
 ----------

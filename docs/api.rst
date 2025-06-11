@@ -1,7 +1,7 @@
 API Reference
 =============
 
-This page contains the auto-generated API documentation for FabricPy.
+This page contains the auto-generated API documentation for fabricpy.
 
 Main Package
 ------------

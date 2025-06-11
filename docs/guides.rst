@@ -1,7 +1,7 @@
-FabricPy Guides
+fabricpy Guides
 ===============
 
-This section contains comprehensive guides for using FabricPy to create Minecraft Fabric mods.
+This section contains comprehensive guides for using fabricpy to create Minecraft Fabric mods.
 
 .. toctree::
    :maxdepth: 2

@@ -1,7 +1,7 @@
 Creating Items
 ==============
 
-Items are the fundamental building blocks of any Minecraft mod. In FabricPy, creating items is straightforward and follows Minecraft's item system conventions.
+Items are the fundamental building blocks of any Minecraft mod. In fabricpy, creating items is straightforward and follows Minecraft's item system conventions.
 
 Basic Item Creation
 -------------------

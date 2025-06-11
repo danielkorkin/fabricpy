@@ -1,12 +1,12 @@
 Quick Start Guide
 =================
 
-This guide will help you get started with FabricPy quickly.
+This guide will help you get started with fabricpy quickly.
 
 Installation
 ------------
 
-First, ensure you have Python 3.10+ installed, then install FabricPy:
+First, ensure you have Python 3.10+ installed, then install fabricpy:
 
 .. code-block:: bash
 
@@ -15,7 +15,7 @@ First, ensure you have Python 3.10+ installed, then install FabricPy:
 External Requirements
 ---------------------
 
-Before using FabricPy, you need to install these external dependencies:
+Before using fabricpy, you need to install these external dependencies:
 
 1. Java Development Kit (JDK)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,7 +61,7 @@ Here's a complete example of creating a simple mod:
        mod_id="tutorial_mod",
        name="Tutorial Mod",
        version="1.0.0", 
-       description="My first FabricPy mod",
+       description="My first fabricpy mod",
        authors=["Your Name"]
    )
 

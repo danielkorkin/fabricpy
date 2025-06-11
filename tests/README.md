@@ -1,4 +1,4 @@
-# FabricPy Test Suite
+# fabricpy Test Suite
 
 This directory contains comprehensive unit tests for the fabricpy library, ensuring all features work correctly and reliably.
 

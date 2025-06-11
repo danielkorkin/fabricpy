@@ -1,4 +1,4 @@
-# Documentation requirements for FabricPy
+# Documentation requirements for fabricpy
 # These are the minimal requirements needed to build the Sphinx documentation
 
 # Core Sphinx documentation generator

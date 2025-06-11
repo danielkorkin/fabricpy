@@ -1,7 +1,7 @@
 # fabricpy/__init__.py
-"""FabricPy - A lightweight helper library for writing Fabric mods in Python.
+"""fabricpy - A lightweight helper library for writing Fabric mods in Python.
 
-FabricPy provides a simple, Pythonic interface for creating Minecraft Fabric mods
+fabricpy provides a simple, Pythonic interface for creating Minecraft Fabric mods
 without needing to write Java directly. It handles mod configuration, item and block
 registration, recipe creation, and project compilation.
 

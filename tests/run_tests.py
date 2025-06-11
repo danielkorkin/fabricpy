@@ -77,7 +77,7 @@ def print_test_summary(result):
 
 def main():
     """Main entry point."""
-    print("FabricPy Unit Test Runner")
+    print("fabricpy Unit Test Runner")
     print("="*70)
     
     if len(sys.argv) > 1:
