@@ -6,7 +6,7 @@ This guide will help you get started with FabricPy quickly.
 Installation
 ------------
 
-First, ensure you have Python 3.8+ installed, then install FabricPy:
+First, ensure you have Python 3.10+ installed, then install FabricPy:
 
 .. code-block:: bash
 
