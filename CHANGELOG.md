@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-06-11
+
+### Added
+- Comprehensive documentation guides for all fabricpy components
+- Guide for creating items with examples and best practices
+- Guide for creating food items with nutrition guidelines
+- Guide for creating blocks with texture management
+- Guide for custom recipes with all recipe types
+- Guide for custom item groups with organization strategies
+- Guide for vanilla item groups with integration examples
+- Enhanced README with better feature descriptions and examples
+- More detailed API documentation with usage examples
+
+### Changed
+- Improved consistency in naming conventions across the library
+- Enhanced type hints and parameter documentation
+- Updated testing framework with better coverage
+- Refined documentation structure for better navigation
+- Improved code examples in documentation with more realistic scenarios
+- Better organization of test files with clearer descriptions
+
+### Documentation
+- Added complete guide series covering all major features
+- Enhanced Sphinx documentation with better cross-references
+- Improved code examples with step-by-step explanations
+- Added troubleshooting sections to guides
+- Better integration with Read the Docs
+
+### Testing
+- Enhanced test descriptions and documentation
+- Improved test organization and categorization
+- Better test coverage reporting
+- More comprehensive integration tests
+
 ## [0.1.0] - 2025-06-10
 
 ### Added

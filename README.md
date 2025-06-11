@@ -1,6 +1,6 @@
 # fabricpy
 
-![Codecov](https://img.shields.io/codecov/c/gh/danielkorkin/fabricpy) ![PyPI - Version](https://img.shields.io/pypi/v/fabricpy) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/danielkorkin/fabricpy/.github%2Fworkflows%2Ftest-and-coverage.yml) ![PyPI - License](https://img.shields.io/pypi/l/fabricpy) ![PyPI - Downloads](https://img.shields.io/pypi/dm/fabricpy) ![Read the Docs](https://img.shields.io/readthedocs/fabricpy)
+![Codecov](https://img.shields.io/codecov/c/gh/danielkorkin/fabricpy) ![PyPI - Version](https://img.shields.io/pypi/v/fabricpy) ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/danielkorkin/fabricpy/.github%2Fworkflows%2Ftest-and-coverage.yml) ![PyPI - License](https://img.shields.io/pypi/l/fabricpy) ![Read the Docs](https://img.shields.io/readthedocs/fabricpy)
 
 Python Library that allows you to create Fabric Minecraft mods in Python! Write your mod logic in Python and automatically generate a complete, buildable Fabric mod project with Java source files, assets, and testing integration.
 
