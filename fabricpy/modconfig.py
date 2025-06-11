@@ -1376,6 +1376,10 @@ public class CustomBlock extends Block {{
         """
         if not os.path.isdir(self.project_dir):
             raise RuntimeError("Project directory not found – call compile() first.")
+        
+        # Ensure gradle.properties has necessary properties
+        self._ensure_gradle_properties(self.project_dir)
+        
         print("🔨 Building mod JAR …")
         subprocess.check_call(["./gradlew", "build"], cwd=self.project_dir)
         print("✔ Build complete – JAR written to build/libs/")
@@ -1400,6 +1404,9 @@ public class CustomBlock extends Block {{
             raise FileNotFoundError(
                 f"Project directory '{self.project_dir}' does not exist. Run compile() first."
             )
+
+        # Ensure gradle.properties has necessary properties
+        self._ensure_gradle_properties(self.project_dir)
 
         print(f"Running mod '{self.name}' in development mode...")
         original_cwd = os.getcwd()
@@ -1496,7 +1503,7 @@ task unitTest(type: Test) {
             f.write(testing_config)
 
     def _ensure_gradle_properties(self, project_dir: str):
-        """Ensure gradle.properties has necessary testing properties."""
+        """Ensure gradle.properties has necessary testing properties and mod configuration."""
         gradle_props_path = os.path.join(project_dir, "gradle.properties")
 
         if not os.path.exists(gradle_props_path):
@@ -1505,9 +1512,17 @@ task unitTest(type: Test) {
         with open(gradle_props_path, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Add testing-related properties if missing
+        # Add required mod properties if missing
         additional_props = []
 
+        # Essential mod properties
+        if "archives_base_name" not in content:
+            additional_props.append(f"archives_base_name={self.mod_id}")
+
+        if "mod_id" not in content:
+            additional_props.append(f"mod_id={self.mod_id}")
+
+        # Testing-related properties
         if "org.gradle.jvmargs" not in content:
             additional_props.append("org.gradle.jvmargs=-Xmx2G")
 
@@ -1516,7 +1531,7 @@ task unitTest(type: Test) {
 
         if additional_props:
             with open(gradle_props_path, "a", encoding="utf-8") as f:
-                f.write("\n# Testing configuration added by fabricpy\n")
+                f.write("\n# Mod configuration and testing properties added by fabricpy\n")
                 for prop in additional_props:
                     f.write(f"{prop}\n")
 

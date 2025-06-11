@@ -7,10 +7,9 @@ import tempfile
 import shutil
 import os
 import json
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+import subprocess
+from unittest.mock import patch
 
-import fabricpy
 from fabricpy.modconfig import ModConfig
 from fabricpy.item import Item
 from fabricpy.fooditem import FoodItem
@@ -451,6 +450,282 @@ class TestModConfig(unittest.TestCase):
             mod_config.run()
         
         self.assertIn("does not exist", str(context.exception))
+
+    @patch('subprocess.check_call')
+    def test_build_method_with_gradle_properties(self, mock_subprocess):
+        """Test build method ensures gradle.properties has required properties."""
+        mod_config = ModConfig(
+            mod_id="test-mod",
+            name="Test Mod",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"],
+            project_dir=self.project_dir
+        )
+        
+        # Create project directory and gradle.properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        with open(gradle_props_path, 'w') as f:
+            f.write("# Initial properties\nsome_other_prop=value\n")
+        
+        # First compile to ensure gradle.properties is updated
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # Verify gradle.properties has required properties
+        with open(gradle_props_path, 'r') as f:
+            content = f.read()
+        
+        self.assertIn("archives_base_name=test-mod", content)
+        self.assertIn("mod_id=test-mod", content)
+        
+        mod_config.build()
+        
+        mock_subprocess.assert_called_once_with(
+            ["./gradlew", "build"],
+            cwd=self.project_dir
+        )
+
+    @patch('subprocess.check_call')
+    def test_build_method_gradle_failure(self, mock_subprocess):
+        """Test build method handles Gradle build failures."""
+        mod_config = ModConfig(
+            mod_id="testmod",
+            name="Test Mod",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"],
+            project_dir=self.project_dir
+        )
+        
+        # Create project directory
+        os.makedirs(self.project_dir)
+        
+        # Mock gradle build failure
+        mock_subprocess.side_effect = subprocess.CalledProcessError(1, ["./gradlew", "build"])
+        
+        with self.assertRaises(subprocess.CalledProcessError):
+            mod_config.build()
+
+    @patch('subprocess.check_call')
+    def test_build_method_with_complex_project(self, mock_subprocess):
+        """Test build method with a complex project structure."""
+        mod_config = ModConfig(
+            mod_id="complex_mod",
+            name="Complex Mod",
+            version="2.1.0",
+            description="Complex test mod",
+            authors=["Dev1", "Dev2"],
+            project_dir=self.project_dir
+        )
+        
+        # Create complex project structure
+        os.makedirs(self.project_dir)
+        os.makedirs(os.path.join(self.project_dir, "src", "main", "java"))
+        os.makedirs(os.path.join(self.project_dir, "src", "main", "resources"))
+        
+        # Create build.gradle file
+        build_gradle = os.path.join(self.project_dir, "build.gradle")
+        with open(build_gradle, 'w') as f:
+            f.write("// Complex build.gradle\napply plugin: 'fabric-loom'\n")
+        
+        mod_config.build()
+        
+        mock_subprocess.assert_called_once_with(
+            ["./gradlew", "build"],
+            cwd=self.project_dir
+        )
+
+    @patch('fabricpy.modconfig.subprocess.check_call')
+    @patch('fabricpy.modconfig.os.chdir')
+    @patch('fabricpy.modconfig.os.getcwd')
+    def test_run_method_with_gradle_properties(self, mock_getcwd, mock_chdir, mock_subprocess):
+        """Test run method with gradle.properties management."""
+        mock_getcwd.return_value = "/original/cwd"
+        
+        mod_config = ModConfig(
+            mod_id="run-test-mod",
+            name="Run Test Mod",
+            version="1.5.0",
+            description="Test mod for run method",
+            authors=["RunTester"],
+            project_dir=self.project_dir
+        )
+        
+        # Create project directory and gradle.properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        with open(gradle_props_path, 'w') as f:
+            f.write("# Test gradle.properties\n")
+        
+        # Ensure gradle.properties has required properties
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # Verify gradle.properties was updated
+        with open(gradle_props_path, 'r') as f:
+            content = f.read()
+        
+        self.assertIn("archives_base_name=run-test-mod", content)
+        self.assertIn("mod_id=run-test-mod", content)
+        
+        mod_config.run()
+        
+        # Verify directory changes and command execution
+        mock_chdir.assert_any_call(self.project_dir)
+        mock_chdir.assert_any_call("/original/cwd")
+        mock_subprocess.assert_called_once_with(["./gradlew", "runClient"])
+
+    @patch('fabricpy.modconfig.subprocess.check_call')
+    @patch('fabricpy.modconfig.os.chdir')
+    @patch('fabricpy.modconfig.os.getcwd')
+    def test_run_method_gradle_failure(self, mock_getcwd, mock_chdir, mock_subprocess):
+        """Test run method handles Gradle runClient failures."""
+        mock_getcwd.return_value = "/original/cwd"
+        
+        mod_config = ModConfig(
+            mod_id="testmod",
+            name="Test Mod",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"],
+            project_dir=self.project_dir
+        )
+        
+        # Create project directory
+        os.makedirs(self.project_dir)
+        
+        # Mock gradle runClient failure
+        mock_subprocess.side_effect = subprocess.CalledProcessError(1, ["./gradlew", "runClient"])
+        
+        with self.assertRaises(subprocess.CalledProcessError):
+            mod_config.run()
+        
+        # Verify we still restore the original directory
+        mock_chdir.assert_any_call("/original/cwd")
+
+    @patch('fabricpy.modconfig.subprocess.check_call')
+    @patch('fabricpy.modconfig.os.chdir')
+    @patch('fabricpy.modconfig.os.getcwd')
+    def test_run_method_with_special_characters_in_mod_id(self, mock_getcwd, mock_chdir, mock_subprocess):
+        """Test run method with special characters in mod_id."""
+        mock_getcwd.return_value = "/original/cwd"
+        
+        mod_config = ModConfig(
+            mod_id="test-mod_with.special-chars",
+            name="Test Mod with Special Chars",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"],
+            project_dir=self.project_dir
+        )
+        
+        # Create project directory and gradle.properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        with open(gradle_props_path, 'w') as f:
+            f.write("# Test gradle.properties\n")
+        
+        # Ensure gradle.properties has required properties
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # Verify gradle.properties handles special characters correctly
+        with open(gradle_props_path, 'r') as f:
+            content = f.read()
+        
+        self.assertIn("archives_base_name=test-mod_with.special-chars", content)
+        self.assertIn("mod_id=test-mod_with.special-chars", content)
+        
+        mod_config.run()
+        
+        mock_subprocess.assert_called_once_with(["./gradlew", "runClient"])
+
+    def test_ensure_gradle_properties_existing_properties(self):
+        """Test _ensure_gradle_properties doesn't duplicate existing properties."""
+        mod_config = ModConfig(
+            mod_id="existing-props",
+            name="Existing Props Test",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"]
+        )
+        
+        # Create project directory and gradle.properties with existing properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        original_content = """# Existing gradle.properties
+archives_base_name=existing-props
+mod_id=existing-props
+org.gradle.jvmargs=-Xmx1G
+org.gradle.parallel=false
+"""
+        with open(gradle_props_path, 'w') as f:
+            f.write(original_content)
+        
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # Read the file after processing
+        with open(gradle_props_path, 'r') as f:
+            final_content = f.read()
+        
+        # Should not have duplicated any properties
+        self.assertEqual(final_content.count("archives_base_name="), 1)
+        self.assertEqual(final_content.count("mod_id="), 1)
+        self.assertEqual(final_content.count("org.gradle.jvmargs="), 1)
+        self.assertEqual(final_content.count("org.gradle.parallel="), 1)
+        
+        # Should preserve existing values
+        self.assertIn("archives_base_name=existing-props", final_content)
+        self.assertIn("org.gradle.jvmargs=-Xmx1G", final_content)
+        self.assertIn("org.gradle.parallel=false", final_content)
+
+    def test_ensure_gradle_properties_no_file(self):
+        """Test _ensure_gradle_properties when gradle.properties doesn't exist."""
+        mod_config = ModConfig(
+            mod_id="no-file-test",
+            name="No File Test",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"]
+        )
+        
+        # Create project directory but no gradle.properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        
+        # Should not crash when file doesn't exist
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # File should still not exist (method returns early)
+        self.assertFalse(os.path.exists(gradle_props_path))
+
+    def test_ensure_gradle_properties_empty_file(self):
+        """Test _ensure_gradle_properties with empty gradle.properties."""
+        mod_config = ModConfig(
+            mod_id="empty-file-test",
+            name="Empty File Test",
+            version="1.0.0",
+            description="Test",
+            authors=["Test"]
+        )
+        
+        # Create project directory and empty gradle.properties
+        os.makedirs(self.project_dir)
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
+        with open(gradle_props_path, 'w') as f:
+            f.write("")  # Empty file
+        
+        mod_config._ensure_gradle_properties(self.project_dir)
+        
+        # Read the file after processing
+        with open(gradle_props_path, 'r') as f:
+            content = f.read()
+        
+        # Should add all required properties
+        self.assertIn("archives_base_name=empty-file-test", content)
+        self.assertIn("mod_id=empty-file-test", content)
+        self.assertIn("org.gradle.jvmargs=-Xmx2G", content)
+        self.assertIn("org.gradle.parallel=true", content)
+        self.assertIn("# Mod configuration and testing properties added by fabricpy", content)
 
 
 class TestModConfigIntegration(unittest.TestCase):
