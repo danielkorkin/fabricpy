@@ -1,0 +1,9 @@
+# Core testing dependencies
+pytest>=7.0
+pytest-cov>=4.0
+
+# Coverage reporting
+coverage>=6.0
+
+# Optional: For more advanced testing features
+pytest-mock>=3.10.0
