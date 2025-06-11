@@ -463,21 +463,32 @@ class TestModConfig(unittest.TestCase):
             project_dir=self.project_dir
         )
         
-        # Create project directory and gradle.properties
+        # Create project directory
         os.makedirs(self.project_dir)
-        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
-        with open(gradle_props_path, 'w') as f:
-            f.write("# Initial properties\nsome_other_prop=value\n")
         
-        # First compile to ensure gradle.properties is updated
+        # Call _ensure_gradle_properties to create gradle.properties
         mod_config._ensure_gradle_properties(self.project_dir)
         
-        # Verify gradle.properties has required properties
+        # Verify gradle.properties has required properties in proper format
+        gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
         with open(gradle_props_path, 'r') as f:
             content = f.read()
         
+        # Check for proper Fabric format
+        self.assertIn("# Done to increase the memory available to gradle.", content)
+        self.assertIn("org.gradle.jvmargs=-Xmx1G", content)
+        self.assertIn("org.gradle.parallel=true", content)
+        self.assertIn("# Fabric Properties", content)
+        self.assertIn("minecraft_version=1.21.5", content)
+        self.assertIn("yarn_mappings=1.21.5+build.1", content)
+        self.assertIn("loader_version=0.16.10", content)
+        self.assertIn("# Mod Properties", content)
+        self.assertIn("mod_version=1.0.0", content)
+        self.assertIn("maven_group=com.example", content)
         self.assertIn("archives_base_name=test-mod", content)
         self.assertIn("mod_id=test-mod", content)
+        self.assertIn("# Dependencies", content)
+        self.assertIn("fabric_version=0.119.5+1.21.5", content)
         
         mod_config.build()
         
@@ -561,12 +572,25 @@ class TestModConfig(unittest.TestCase):
         # Ensure gradle.properties has required properties
         mod_config._ensure_gradle_properties(self.project_dir)
         
-        # Verify gradle.properties was updated
+        # Verify gradle.properties was completely regenerated with proper format
         with open(gradle_props_path, 'r') as f:
             content = f.read()
         
+        # Should have the standard Fabric format (overwrites any existing content)
+        self.assertIn("# Done to increase the memory available to gradle.", content)
+        self.assertIn("org.gradle.jvmargs=-Xmx1G", content)
+        self.assertIn("org.gradle.parallel=true", content)
+        self.assertIn("# Fabric Properties", content)
+        self.assertIn("minecraft_version=1.21.5", content)
+        self.assertIn("yarn_mappings=1.21.5+build.1", content)
+        self.assertIn("loader_version=0.16.10", content)
+        self.assertIn("# Mod Properties", content)
+        self.assertIn("mod_version=1.5.0", content)  # Uses the ModConfig version
+        self.assertIn("maven_group=com.example", content)
         self.assertIn("archives_base_name=run-test-mod", content)
         self.assertIn("mod_id=run-test-mod", content)
+        self.assertIn("# Dependencies", content)
+        self.assertIn("fabric_version=0.119.5+1.21.5", content)
         
         mod_config.run()
         
@@ -628,23 +652,27 @@ class TestModConfig(unittest.TestCase):
         # Ensure gradle.properties has required properties
         mod_config._ensure_gradle_properties(self.project_dir)
         
-        # Verify gradle.properties handles special characters correctly
+        # Verify gradle.properties handles special characters correctly in standard format
         with open(gradle_props_path, 'r') as f:
             content = f.read()
         
+        # Should have standard Fabric format with special characters preserved
+        self.assertIn("# Done to increase the memory available to gradle.", content)
         self.assertIn("archives_base_name=test-mod_with.special-chars", content)
         self.assertIn("mod_id=test-mod_with.special-chars", content)
+        self.assertIn("mod_version=1.0.0", content)
+        self.assertIn("maven_group=com.example", content)
         
         mod_config.run()
         
         mock_subprocess.assert_called_once_with(["./gradlew", "runClient"])
 
     def test_ensure_gradle_properties_existing_properties(self):
-        """Test _ensure_gradle_properties doesn't duplicate existing properties."""
+        """Test _ensure_gradle_properties creates standard format regardless of existing content."""
         mod_config = ModConfig(
             mod_id="existing-props",
             name="Existing Props Test",
-            version="1.0.0",
+            version="2.1.0",
             description="Test",
             authors=["Test"]
         )
@@ -666,20 +694,23 @@ org.gradle.parallel=false
         # Read the file after processing
         with open(gradle_props_path, 'r') as f:
             final_content = f.read()
-        
-        # Should not have duplicated any properties
-        self.assertEqual(final_content.count("archives_base_name="), 1)
-        self.assertEqual(final_content.count("mod_id="), 1)
-        self.assertEqual(final_content.count("org.gradle.jvmargs="), 1)
-        self.assertEqual(final_content.count("org.gradle.parallel="), 1)
-        
-        # Should preserve existing values
-        self.assertIn("archives_base_name=existing-props", final_content)
+
+        # Should have standard Fabric format (overwrites existing content)
+        self.assertIn("# Done to increase the memory available to gradle.", final_content)
         self.assertIn("org.gradle.jvmargs=-Xmx1G", final_content)
-        self.assertIn("org.gradle.parallel=false", final_content)
+        self.assertIn("org.gradle.parallel=true", final_content)
+        self.assertIn("# Fabric Properties", final_content)
+        self.assertIn("minecraft_version=1.21.5", final_content)
+        self.assertIn("# Mod Properties", final_content)
+        self.assertIn("mod_version=2.1.0", final_content)  # Uses ModConfig version
+        self.assertIn("maven_group=com.example", final_content)
+        self.assertIn("archives_base_name=existing-props", final_content)
+        self.assertIn("mod_id=existing-props", final_content)
+        self.assertIn("# Dependencies", final_content)
+        self.assertIn("fabric_version=0.119.5+1.21.5", final_content)
 
     def test_ensure_gradle_properties_no_file(self):
-        """Test _ensure_gradle_properties when gradle.properties doesn't exist."""
+        """Test _ensure_gradle_properties creates file when it doesn't exist."""
         mod_config = ModConfig(
             mod_id="no-file-test",
             name="No File Test",
@@ -692,11 +723,23 @@ org.gradle.parallel=false
         os.makedirs(self.project_dir)
         gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
         
-        # Should not crash when file doesn't exist
+        # File shouldn't exist initially
+        self.assertFalse(os.path.exists(gradle_props_path))
+        
+        # Call _ensure_gradle_properties
         mod_config._ensure_gradle_properties(self.project_dir)
         
-        # File should still not exist (method returns early)
-        self.assertFalse(os.path.exists(gradle_props_path))
+        # File should now exist with standard format
+        self.assertTrue(os.path.exists(gradle_props_path))
+        
+        with open(gradle_props_path, 'r') as f:
+            content = f.read()
+        
+        # Should have standard Fabric format
+        self.assertIn("# Done to increase the memory available to gradle.", content)
+        self.assertIn("archives_base_name=no-file-test", content)
+        self.assertIn("mod_id=no-file-test", content)
+        self.assertIn("mod_version=1.0.0", content)
 
     def test_ensure_gradle_properties_empty_file(self):
         """Test _ensure_gradle_properties with empty gradle.properties."""
@@ -720,12 +763,15 @@ org.gradle.parallel=false
         with open(gradle_props_path, 'r') as f:
             content = f.read()
         
-        # Should add all required properties
+        # Should create standard Fabric format (overwrites empty file)
+        self.assertIn("# Done to increase the memory available to gradle.", content)
         self.assertIn("archives_base_name=empty-file-test", content)
         self.assertIn("mod_id=empty-file-test", content)
-        self.assertIn("org.gradle.jvmargs=-Xmx2G", content)
+        self.assertIn("org.gradle.jvmargs=-Xmx1G", content)
         self.assertIn("org.gradle.parallel=true", content)
-        self.assertIn("# Mod configuration and testing properties added by fabricpy", content)
+        self.assertIn("mod_version=1.0.0", content)
+        self.assertIn("maven_group=com.example", content)
+        self.assertIn("minecraft_version=1.21.5", content)
 
 
 class TestModConfigIntegration(unittest.TestCase):

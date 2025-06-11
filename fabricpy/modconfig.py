@@ -1503,37 +1503,32 @@ task unitTest(type: Test) {
             f.write(testing_config)
 
     def _ensure_gradle_properties(self, project_dir: str):
-        """Ensure gradle.properties has necessary testing properties and mod configuration."""
+        """Ensure gradle.properties has the proper Fabric mod structure and configuration."""
         gradle_props_path = os.path.join(project_dir, "gradle.properties")
 
-        if not os.path.exists(gradle_props_path):
-            return
+        # Always create/overwrite gradle.properties with the standard Fabric template format
+        gradle_props_content = f"""# Done to increase the memory available to gradle.
+org.gradle.jvmargs=-Xmx1G
+org.gradle.parallel=true
 
-        with open(gradle_props_path, "r", encoding="utf-8") as f:
-            content = f.read()
+# Fabric Properties
+# check these on https://fabricmc.net/develop
+minecraft_version=1.21.5
+yarn_mappings=1.21.5+build.1
+loader_version=0.16.10
 
-        # Add required mod properties if missing
-        additional_props = []
+# Mod Properties
+mod_version={self.version}
+maven_group=com.example
+archives_base_name={self.mod_id}
+mod_id={self.mod_id}
 
-        # Essential mod properties
-        if "archives_base_name" not in content:
-            additional_props.append(f"archives_base_name={self.mod_id}")
+# Dependencies
+fabric_version=0.119.5+1.21.5
+"""
 
-        if "mod_id" not in content:
-            additional_props.append(f"mod_id={self.mod_id}")
-
-        # Testing-related properties
-        if "org.gradle.jvmargs" not in content:
-            additional_props.append("org.gradle.jvmargs=-Xmx2G")
-
-        if "org.gradle.parallel" not in content:
-            additional_props.append("org.gradle.parallel=true")
-
-        if additional_props:
-            with open(gradle_props_path, "a", encoding="utf-8") as f:
-                f.write("\n# Mod configuration and testing properties added by fabricpy\n")
-                for prop in additional_props:
-                    f.write(f"{prop}\n")
+        with open(gradle_props_path, "w", encoding="utf-8") as f:
+            f.write(gradle_props_content)
 
     def generate_fabric_unit_tests(self, project_dir: str):
         """Generate Fabric unit tests for the mod.

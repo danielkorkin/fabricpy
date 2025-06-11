@@ -219,11 +219,18 @@ class TestRunBuildMethods(unittest.TestCase):
         with open(gradle_props_path, 'r') as f:
             content = f.read()
 
+        # Since the method now overwrites the file, check for the complete template
         self.assertIn("archives_base_name=test-gradle-props", content)
         self.assertIn("mod_id=test-gradle-props", content)
-        self.assertIn("org.gradle.jvmargs=-Xmx2G", content)
+        self.assertIn("org.gradle.jvmargs=-Xmx1G", content)
         self.assertIn("org.gradle.parallel=true", content)
-        self.assertIn("some_other_property=value", content)  # Should preserve existing properties
+        self.assertIn("mod_version=1.0.0", content)
+        self.assertIn("maven_group=com.example", content)
+        self.assertIn("minecraft_version=1.21.5", content)
+        self.assertIn("yarn_mappings=1.21.5+build.1", content)
+        self.assertIn("loader_version=0.16.10", content)
+        self.assertIn("fabric_version=0.119.5+1.21.5", content)
+        # Note: some_other_property should NOT be preserved since file is overwritten
 
     def test_run_and_build_with_complex_mod_id(self):
         """Test run() and build() methods with complex mod IDs containing special characters."""
@@ -314,7 +321,7 @@ class TestRunBuildMethods(unittest.TestCase):
             mock_subprocess.assert_called_with(["./gradlew", "runClient"])
 
     def test_gradle_properties_no_duplication(self):
-        """Test that gradle.properties doesn't get duplicate entries."""
+        """Test that gradle.properties gets recreated with correct format."""
         mod_config = ModConfig(
             mod_id="no-duplication-test",
             name="No Duplication Test",
@@ -328,10 +335,11 @@ class TestRunBuildMethods(unittest.TestCase):
         os.makedirs(self.project_dir)
         gradle_props_path = os.path.join(self.project_dir, "gradle.properties")
         original_content = """# Existing gradle.properties
-archives_base_name=no-duplication-test
-mod_id=no-duplication-test
-org.gradle.jvmargs=-Xmx1G
+archives_base_name=old-value
+mod_id=old-value
+org.gradle.jvmargs=-Xmx3G
 org.gradle.parallel=false
+some_custom_property=keep_me
 """
         with open(gradle_props_path, 'w') as f:
             f.write(original_content)
@@ -341,20 +349,24 @@ org.gradle.parallel=false
         mod_config._ensure_gradle_properties(self.project_dir)
         mod_config._ensure_gradle_properties(self.project_dir)
 
-        # Verify no duplication occurred
+        # Verify file was overwritten with correct template format
         with open(gradle_props_path, 'r') as f:
             final_content = f.read()
 
-        # Should not have duplicated any properties
+        # Should have exactly one of each property with correct values
         self.assertEqual(final_content.count("archives_base_name="), 1)
         self.assertEqual(final_content.count("mod_id="), 1)
         self.assertEqual(final_content.count("org.gradle.jvmargs="), 1)
         self.assertEqual(final_content.count("org.gradle.parallel="), 1)
 
-        # Should preserve existing values
+        # Should have the new values, not the old ones
         self.assertIn("archives_base_name=no-duplication-test", final_content)
+        self.assertIn("mod_id=no-duplication-test", final_content)
         self.assertIn("org.gradle.jvmargs=-Xmx1G", final_content)
-        self.assertIn("org.gradle.parallel=false", final_content)
+        self.assertIn("org.gradle.parallel=true", final_content)
+        
+        # Should NOT preserve existing custom properties since file is overwritten
+        self.assertNotIn("some_custom_property=keep_me", final_content)
 
 
 if __name__ == '__main__':
