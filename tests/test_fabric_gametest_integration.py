@@ -163,7 +163,7 @@ class TestFabricGameTestIntegration(unittest.TestCase):
         gametest_fabric_mod_json = os.path.join(mod.project_dir, "src", "gametest", "resources", "fabric.mod.json")
         self.assertTrue(os.path.exists(gametest_fabric_mod_json))
 
-        server_test = os.path.join(mod.project_dir, "src", "gametest", "java", "com", "example", "gametestmod", "GameTestModServerTest.java")
+        server_test = os.path.join(mod.project_dir, "src", "gametest", "java", "com", "example", "gametestmod", "GametestmodServerTest.java")
         self.assertTrue(os.path.exists(server_test))
 
     def test_recipe_testing_integration(self):
