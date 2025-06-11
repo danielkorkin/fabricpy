@@ -48,6 +48,11 @@ Here's a simple example of creating a mod with FabricPy:
    mod.compile()
    mod.run()
 
+Helpful Tools
+-------------
+
+* `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ - Visual interface for creating crafting recipe JSON files
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
