@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath(".."))
 project = "fabricpy"
 copyright = "2025, Daniel Korkin"
 author = "Daniel Korkin"
-release = "v0.1.1"
+release = "v0.1.2"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
