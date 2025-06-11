@@ -1590,7 +1590,7 @@ fabric_version=0.119.5+1.21.5
             "java",
             "com",
             "example",
-            self.mod_id.replace("-", "").replace("_", ""),
+            self.mod_id,
             "test",
         )
         os.makedirs(test_dir, exist_ok=True)
@@ -1605,7 +1605,7 @@ fabric_version=0.119.5+1.21.5
     def _generate_item_registration_test(self, test_dir: str):
         """Generate unit test for item registration."""
         package_name = (
-            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+            f"com.example.{self.mod_id}.test"
         )
 
         test_content = f"""package {package_name};
@@ -1625,7 +1625,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 
-import com.example.{self.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+import com.example.{self.mod_id}.items.TutorialItems;
 
 /**
  * Unit tests for item registration and properties.
@@ -1725,7 +1725,7 @@ public class ItemRegistrationTest {{
             test_dir (str): Directory where the test file should be generated.
         """
         package_name = (
-            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+            f"com.example.{self.mod_id}.test"
         )
 
         test_content = f"""package {package_name};
@@ -1833,7 +1833,7 @@ public class RecipeValidationTest {{
             test_dir (str): Directory where the test file should be generated.
         """
         package_name = (
-            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+            f"com.example.{self.mod_id}.test"
         )
 
         test_content = f"""package {package_name};
@@ -1848,7 +1848,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 
-import com.example.{self.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+import com.example.{self.mod_id}.items.TutorialItems;
 
 /**
  * Integration tests for complete mod functionality.
@@ -1941,7 +1941,7 @@ public class ModIntegrationTest {{
             "java",
             "com",
             "example",
-            self.mod_id.replace("-", "").replace("_", ""),
+            self.mod_id,
         )
         os.makedirs(gametest_dir, exist_ok=True)
 
@@ -1959,7 +1959,7 @@ public class ModIntegrationTest {{
         gametest_resources = os.path.join(project_dir, "src", "gametest", "resources")
         os.makedirs(gametest_resources, exist_ok=True)
 
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{self.mod_id}"
 
         fabric_mod_json = {
             "schemaVersion": 1,
@@ -1971,10 +1971,10 @@ public class ModIntegrationTest {{
             "environment": "*",
             "entrypoints": {
                 "fabric-gametest": [
-                    f"{package_name}.{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+                    f"{package_name}.{self.mod_id.replace('-', '_').title()}ServerTest"
                 ],
                 "fabric-client-gametest": [
-                    f"{package_name}.{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+                    f"{package_name}.{self.mod_id.replace('-', '_').title()}ClientTest"
                 ],
             },
             "depends": {
@@ -1991,9 +1991,9 @@ public class ModIntegrationTest {{
 
     def _generate_server_game_test(self, gametest_dir: str):
         """Generate server-side game tests."""
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{self.mod_id}"
         class_name = (
-            f"{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+            f"{self.mod_id.replace('-', '_').title()}ServerTest"
         )
 
         server_test_content = f"""package {package_name};
@@ -2090,9 +2090,9 @@ public class {class_name} implements FabricGameTest {{
 
     def _generate_client_game_test(self, gametest_dir: str):
         """Generate client-side game tests."""
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{self.mod_id}"
         class_name = (
-            f"{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+            f"{self.mod_id.replace('-', '_').title()}ClientTest"
         )
 
         client_test_content = f'''package {package_name};
