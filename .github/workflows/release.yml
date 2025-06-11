@@ -1,31 +1,25 @@
 name: Publish to PyPI
 
 on:
+  push:
+    tags:
+      - 'v*.*.*'    # e.g. v1.2.3 — adjust to your versioning scheme
   release:
-    types: [published]
+    types: [created, published]
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: 3.12
-
-      - name: Upgrade pip and install build tools
-        run: |
+      - run: |
           python -m pip install --upgrade pip
           pip install build twine
-
-      - name: Build package
-        run: python -m build
-
-      - name: Publish package to PyPI
+      - run: python -m build
+      - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
