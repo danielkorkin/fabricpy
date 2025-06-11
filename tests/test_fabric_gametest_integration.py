@@ -125,7 +125,7 @@ class TestFabricGameTestIntegration(unittest.TestCase):
         self._generate_fabric_junit_tests(mod.project_dir, mod)
 
         # Verify unit test content
-        test_file = os.path.join(mod.project_dir, "src", "test", "java", "com", "example", "unittestmod", "test", "ItemRegistrationTest.java")
+        test_file = os.path.join(mod.project_dir, "src", "test", "java", "com", "example", "unit_test_mod", "test", "ItemRegistrationTest.java")
         self.assertTrue(os.path.exists(test_file))
 
         with open(test_file, 'r') as f:
@@ -163,7 +163,7 @@ class TestFabricGameTestIntegration(unittest.TestCase):
         gametest_fabric_mod_json = os.path.join(mod.project_dir, "src", "gametest", "resources", "fabric.mod.json")
         self.assertTrue(os.path.exists(gametest_fabric_mod_json))
 
-        server_test = os.path.join(mod.project_dir, "src", "gametest", "java", "com", "example", "gametestmod", "GametestmodServerTest.java")
+        server_test = os.path.join(mod.project_dir, "src", "gametest", "java", "com", "example", "game_test_mod", "Game_Test_ModServerTest.java")
         self.assertTrue(os.path.exists(server_test))
 
     def test_recipe_testing_integration(self):
@@ -227,7 +227,7 @@ class TestFabricGameTestIntegration(unittest.TestCase):
         self._generate_recipe_validation_tests(mod.project_dir, mod)
 
         # Verify recipe test files exist
-        recipe_test_file = os.path.join(mod.project_dir, "src", "test", "java", "com", "example", "recipetestmod", "test", "RecipeValidationTest.java")
+        recipe_test_file = os.path.join(mod.project_dir, "src", "test", "java", "com", "example", "recipe_test_mod", "test", "RecipeValidationTest.java")
         self.assertTrue(os.path.exists(recipe_test_file))
 
     def _enhance_build_gradle_for_testing(self, project_dir: str):
@@ -322,7 +322,7 @@ dependencies {
 
     def _generate_fabric_junit_tests(self, project_dir: str, mod: ModConfig):
         """Generate Fabric JUnit unit tests."""
-        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", mod.mod_id.replace("-", "").replace("_", ""), "test")
+        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", mod.mod_id, "test")
         os.makedirs(test_dir, exist_ok=True)
 
         # Generate item registration test
@@ -334,7 +334,7 @@ dependencies {
 
     def _generate_item_registration_test(self, test_dir: str, mod: ModConfig):
         """Generate unit tests for item registration."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         class_name = "ItemRegistrationTest"
         
         test_content = f'''package {package_name};
@@ -351,7 +351,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 
-import com.example.{mod.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+import com.example.{mod.mod_id}.items.TutorialItems;
 
 public class {class_name} {{
     
@@ -424,7 +424,7 @@ public class {class_name} {{
 
     def _generate_fabric_game_tests(self, project_dir: str, mod: ModConfig):
         """Generate Fabric game tests."""
-        gametest_dir = os.path.join(project_dir, "src", "gametest", "java", "com", "example", mod.mod_id.replace("-", "").replace("_", ""))
+        gametest_dir = os.path.join(project_dir, "src", "gametest", "java", "com", "example", mod.mod_id)
         os.makedirs(gametest_dir, exist_ok=True)
 
         # Create gametest fabric.mod.json
@@ -441,7 +441,7 @@ public class {class_name} {{
         gametest_resources = os.path.join(project_dir, "src", "gametest", "resources")
         os.makedirs(gametest_resources, exist_ok=True)
 
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{mod.mod_id}"
         
         fabric_mod_json = {
             "schemaVersion": 1,
@@ -452,10 +452,10 @@ public class {class_name} {{
             "environment": "*",
             "entrypoints": {
                 "fabric-gametest": [
-                    f"{package_name}.{mod.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+                    f"{package_name}.{mod.mod_id.replace('-', '_').title()}ServerTest"
                 ],
                 "fabric-client-gametest": [
-                    f"{package_name}.{mod.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+                    f"{package_name}.{mod.mod_id.replace('-', '_').title()}ClientTest"
                 ]
             }
         }
@@ -465,8 +465,8 @@ public class {class_name} {{
 
     def _generate_server_game_test(self, gametest_dir: str, mod: ModConfig):
         """Generate server-side game tests."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
-        class_name = f"{mod.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+        package_name = f"com.example.{mod.mod_id}"
+        class_name = f"{mod.mod_id.replace('-', '_').title()}ServerTest"
 
         server_test_content = f'''package {package_name};
 
@@ -481,7 +481,7 @@ import net.minecraft.util.math.BlockPos;
 
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 
-import com.example.{mod.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems;
+import com.example.{mod.mod_id}.items.TutorialItems;
 
 public class {class_name} implements FabricGameTest {{
 
@@ -556,8 +556,8 @@ public class {class_name} implements FabricGameTest {{
 
     def _generate_client_game_test(self, gametest_dir: str, mod: ModConfig):
         """Generate client-side game tests."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
-        class_name = f"{mod.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+        package_name = f"com.example.{mod.mod_id}"
+        class_name = f"{mod.mod_id.replace('-', '_').title()}ClientTest"
 
         client_test_content = f'''package {package_name};
 
@@ -591,10 +591,10 @@ public class {class_name} implements FabricClientGameTest {{{{
 
     def _generate_recipe_validation_tests(self, project_dir: str, mod: ModConfig):
         """Generate tests specifically for recipe validation."""
-        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", mod.mod_id.replace("-", "").replace("_", ""), "test")
+        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", mod.mod_id, "test")
         os.makedirs(test_dir, exist_ok=True)
-
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        
+        package_name = f"com.example.{mod.mod_id}.test"
         class_name = "RecipeValidationTest"
 
         recipe_test_content = f'''package {package_name};
@@ -864,7 +864,7 @@ task integrationTest(type: Test) {
     def _generate_comprehensive_unit_tests(self, project_dir: str, mod: ModConfig):
         """Generate comprehensive unit tests."""
         test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
-                               mod.mod_id.replace("-", "").replace("_", ""), "test")
+                               mod.mod_id, "test")
         os.makedirs(test_dir, exist_ok=True)
 
         # Generate test suite
@@ -877,7 +877,7 @@ task integrationTest(type: Test) {
 
     def _generate_test_suite(self, test_dir: str, mod: ModConfig):
         """Generate a test suite that runs all tests."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         
         test_suite_content = f'''package {package_name};
 
@@ -901,7 +901,7 @@ public class ComprehensiveTestSuite {{
 
     def _generate_item_properties_test(self, test_dir: str, mod: ModConfig):
         """Generate tests for item properties."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         
         properties_test_content = f'''package {package_name};
 
@@ -986,7 +986,7 @@ public class ItemPropertiesTest {{
 
     def _generate_recipe_logic_test(self, test_dir: str, mod: ModConfig):
         """Generate tests for recipe logic."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         
         recipe_test_content = f'''package {package_name};
 
@@ -1053,7 +1053,7 @@ public class RecipeLogicTest {{
 
     def _generate_registry_test(self, test_dir: str, mod: ModConfig):
         """Generate tests for registry integration."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         
         registry_test_content = f'''package {package_name};
 
@@ -1120,7 +1120,7 @@ public class RegistryIntegrationTest {{
         """Generate comprehensive game tests."""
         # Use the existing game test generation but with more comprehensive tests
         gametest_dir = os.path.join(project_dir, "src", "gametest", "java", "com", "example", 
-                                   mod.mod_id.replace("-", "").replace("_", ""))
+                                   mod.mod_id)
         os.makedirs(gametest_dir, exist_ok=True)
 
         # Create enhanced gametest fabric.mod.json
@@ -1135,7 +1135,7 @@ public class RegistryIntegrationTest {{
         gametest_resources = os.path.join(project_dir, "src", "gametest", "resources")
         os.makedirs(gametest_resources, exist_ok=True)
 
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{mod.mod_id}"
         
         fabric_mod_json = {
             "schemaVersion": 1,
@@ -1165,7 +1165,7 @@ public class RegistryIntegrationTest {{
 
     def _generate_enhanced_server_game_test(self, gametest_dir: str, mod: ModConfig):
         """Generate enhanced server-side game tests."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{mod.mod_id}"
         class_name = "ComprehensiveServerTest"
 
         server_test_content = f'''package {package_name};
@@ -1274,7 +1274,7 @@ public class {class_name} implements FabricGameTest {{
 
     def _generate_enhanced_client_game_test(self, gametest_dir: str, mod: ModConfig):
         """Generate enhanced client-side game tests."""
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}"
+        package_name = f"com.example.{mod.mod_id}"
         class_name = "ComprehensiveClientTest"
 
         client_test_content = f'''package {package_name};
@@ -1335,9 +1335,9 @@ public class {class_name} implements FabricClientGameTest {{
     def _generate_integration_tests(self, project_dir: str, mod: ModConfig):
         """Generate integration tests that test complete workflows."""
         test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
-                               mod.mod_id.replace("-", "").replace("_", ""), "test")
+                               mod.mod_id, "test")
         
-        package_name = f"com.example.{mod.mod_id.replace('-', '').replace('_', '')}.test"
+        package_name = f"com.example.{mod.mod_id}.test"
         
         integration_test_content = f'''package {package_name};
 
@@ -1363,7 +1363,7 @@ public class ModIntegrationTest {{
         // Test that all components of the mod initialize correctly together
         Assertions.assertDoesNotThrow(() -> {{
             // Initialize items
-            com.example.{mod.mod_id.replace("-", "").replace("_", "")}.items.TutorialItems.initialize();
+            com.example.{mod.mod_id}.items.TutorialItems.initialize();
         }}, "Item initialization should not throw exceptions");
         
         Assertions.assertTrue(true, "Mod initialization completed successfully");
@@ -1403,7 +1403,7 @@ public class ModIntegrationTest {{
 
         # Verify test suite exists
         test_suite = os.path.join(project_dir, "src", "test", "java", "com", "example", 
-                                 "comprehensivetestmod", "test", "ComprehensiveTestSuite.java")
+                                 "comprehensive_test_mod", "test", "ComprehensiveTestSuite.java")
         self.assertTrue(os.path.exists(test_suite))
 
         # Verify all test types exist
@@ -1416,7 +1416,7 @@ public class ModIntegrationTest {{
         ]
 
         test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
-                               "comprehensivetestmod", "test")
+                               "comprehensive_test_mod", "test")
         
         for test_file in test_files:
             self.assertTrue(os.path.exists(os.path.join(test_dir, test_file)), 
@@ -1424,11 +1424,11 @@ public class ModIntegrationTest {{
 
         # Verify game test structure
         gametest_server = os.path.join(project_dir, "src", "gametest", "java", "com", "example", 
-                                      "comprehensivetestmod", "ComprehensiveServerTest.java")
+                                      "comprehensive_test_mod", "ComprehensiveServerTest.java")
         self.assertTrue(os.path.exists(gametest_server))
 
         gametest_client = os.path.join(project_dir, "src", "gametest", "java", "com", "example", 
-                                      "comprehensivetestmod", "ComprehensiveClientTest.java")
+                                      "comprehensive_test_mod", "ComprehensiveClientTest.java")
         self.assertTrue(os.path.exists(gametest_client))
 
 

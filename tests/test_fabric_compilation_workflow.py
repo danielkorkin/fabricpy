@@ -172,7 +172,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
     def _verify_unit_tests_generated(self, project_dir: str, mod: ModConfig):
         """Verify unit tests were generated according to Fabric docs standards."""
         test_base_dir = os.path.join(project_dir, "src/test/java/com/example", 
-                                    mod.mod_id.replace("-", "").replace("_", ""), "test")
+                                    mod.mod_id, "test")
         
         # Expected test files based on Fabric documentation patterns
         expected_test_files = [
@@ -210,12 +210,12 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
     def _verify_game_tests_generated(self, project_dir: str, mod: ModConfig):
         """Verify game tests were generated according to Fabric docs."""
         gametest_dir = os.path.join(project_dir, "src/gametest/java/com/example",
-                                   mod.mod_id.replace("-", "").replace("_", ""))
+                                   mod.mod_id)
         
         # Expected gametest files
         expected_files = [
-            f"{mod.mod_id.replace('-', '').replace('_', '').title()}ServerTest.java",
-            f"{mod.mod_id.replace('-', '').replace('_', '').title()}ClientTest.java"
+            f"{mod.mod_id.replace('-', '_').title()}ServerTest.java",
+            f"{mod.mod_id.replace('-', '_').title()}ClientTest.java"
         ]
 
         for test_file in expected_files:
@@ -227,7 +227,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
 
     def _verify_server_gametest_content(self, gametest_dir: str, mod: ModConfig):
         """Verify server game test follows Fabric docs patterns."""
-        server_test_file = f"{mod.mod_id.replace('-', '').replace('_', '').title()}ServerTest.java"
+        server_test_file = f"{mod.mod_id.replace('-', '_').title()}ServerTest.java"
         server_test_path = os.path.join(gametest_dir, server_test_file)
         
         if os.path.exists(server_test_path):
@@ -348,7 +348,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
         
         # Verify test files contain edge case handling
         test_dir = os.path.join(mod.project_dir, "src/test/java/com/example",
-                               mod.mod_id.replace("-", "").replace("_", ""), "test")
+                               mod.mod_id, "test")
         
         if os.path.exists(test_dir):
             # Check that tests were generated for our edge case components

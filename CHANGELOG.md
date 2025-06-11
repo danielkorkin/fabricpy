@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fixed package name inconsistency in generated test files that caused build failures
+- Test generation now preserves underscores in mod_id for package names, consistent with main code generation
+- Updated import statements in generated test files to use correct package structure
+- Fixed gametest directory structure to match actual package naming convention
+
 ## [0.1.2] - 2025-06-11
 
 ### Fixed

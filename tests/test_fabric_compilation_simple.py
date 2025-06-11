@@ -108,7 +108,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
         mod.compile()
 
         # Verify unit test files were generated
-        test_dir = os.path.join(mod.project_dir, "src/test/java/com/example/junitsettuptest/test")
+        test_dir = os.path.join(mod.project_dir, "src/test/java/com/example/junit_setup_test/test")
         # Check if test directory exists or if the compiled mod structure was created
         project_structure_exists = os.path.exists(os.path.join(mod.project_dir, "src"))
         self.assertTrue(project_structure_exists, "Project structure should be created after compilation")
@@ -146,7 +146,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
         mod.compile()
 
         # Verify game test structure
-        gametest_dir = os.path.join(mod.project_dir, "src/gametest/java/com/example/gametestdemo")
+        gametest_dir = os.path.join(mod.project_dir, "src/gametest/java/com/example", mod.mod_id)
         self.assertTrue(os.path.exists(gametest_dir))
 
         # Verify gametest fabric.mod.json
