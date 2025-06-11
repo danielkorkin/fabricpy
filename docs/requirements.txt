@@ -3,3 +3,5 @@
 
 # Core Sphinx documentation generator
 sphinx>=4.0.0
+furo
+sphinx-llms-txt

@@ -58,6 +58,7 @@ Helpful Tools
    :caption: Contents:
 
    quickstart
+   guides
    
 .. toctree::
    :maxdepth: 2
