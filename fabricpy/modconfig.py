@@ -101,7 +101,7 @@ class ModConfig:
         template_repo: str = "https://github.com/FabricMC/fabric-example-mod.git",
         enable_testing: bool = True,  # NEW: Enable Fabric testing integration
         generate_unit_tests: bool = True,  # NEW: Generate unit tests
-        generate_game_tests: bool = True,  # NEW: Generate game tests
+        generate_game_tests: bool = False,  # NEW: Generate game tests
     ):
         """Initialize a new ModConfig instance.
 
@@ -121,7 +121,8 @@ class ModConfig:
             generate_unit_tests (bool, optional): Whether to generate unit tests for
                 registered items and blocks. Defaults to True.
             generate_game_tests (bool, optional): Whether to generate Fabric game tests
-                that run in a Minecraft environment. Defaults to True.
+                that run in a Minecraft environment. Defaults to False to prevent 
+                build compilation issues.
 
         Example:
             Creating a mod configuration::
@@ -572,6 +573,14 @@ class ModConfig:
 
         Returns:
             str: Complete Java source code for the TutorialItems class.
+
+        Example:
+            Creating item files::
+
+                mod.create_item_files(
+                    "/path/to/mod",
+                    "com.example.mymod.items"
+                )
         """
         has_food = any(isinstance(i, FoodItem) for i in self.registered_items)
         has_vanila = any(
@@ -1098,6 +1107,14 @@ public class CustomItem extends Item {{
 
         Returns:
             str: Complete Java source code for the TutorialBlocks class.
+
+        Example:
+            Creating block files::
+
+                mod.create_block_files(
+                    "/path/to/mod",
+                    "com.example.mymod.blocks"
+                )
         """
         has_vanila = any(
             isinstance(getattr(b, "item_group", None), str)
@@ -1377,7 +1394,7 @@ public class CustomBlock extends Block {{
         if not os.path.isdir(self.project_dir):
             raise RuntimeError("Project directory not found – call compile() first.")
         
-        # Ensure gradle.properties has necessary properties
+        # Ensure gradle.properties has required properties
         self._ensure_gradle_properties(self.project_dir)
         
         print("🔨 Building mod JAR …")
@@ -1405,7 +1422,7 @@ public class CustomBlock extends Block {{
                 f"Project directory '{self.project_dir}' does not exist. Run compile() first."
             )
 
-        # Ensure gradle.properties has necessary properties
+        # Ensure gradle.properties has required properties
         self._ensure_gradle_properties(self.project_dir)
 
         print(f"Running mod '{self.name}' in development mode...")
@@ -1447,7 +1464,12 @@ public class CustomBlock extends Block {{
         print("Fabric testing framework setup complete.")
 
     def _enhance_build_gradle_for_testing(self, project_dir: str):
-        """Add Fabric testing configuration to build.gradle."""
+        """Add Fabric testing configuration to build.gradle.
+        
+        Conditionally adds game testing dependencies based on:
+        1. Whether generate_game_tests is enabled, or
+        2. Whether existing game test files are detected in the project
+        """
         build_gradle_path = os.path.join(project_dir, "build.gradle")
 
         if not os.path.exists(build_gradle_path):
@@ -1460,7 +1482,10 @@ public class CustomBlock extends Block {{
         if "fabric-loader-junit" in content:
             return
 
-        # Add testing configuration
+        # Check if we should add game testing dependencies
+        should_add_game_tests = self.generate_game_tests or self._has_game_tests(project_dir)
+
+        # Base testing configuration (always added)
         testing_config = """
 
 // Fabric Testing Configuration Added by fabricpy
@@ -1481,7 +1506,11 @@ test {
     maxHeapSize = "2g"
     systemProperty "fabric.development", "true"
 }
+"""
 
+        # Add game testing configuration only if needed
+        if should_add_game_tests:
+            testing_config += """
 fabricApi {
     configureTests {
         createSourceSet = true
@@ -1489,7 +1518,10 @@ fabricApi {
         eula = true
     }
 }
+"""
 
+        # Add unit test task (always added)
+        testing_config += """
 // Task to run only unit tests
 task unitTest(type: Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
@@ -1505,8 +1537,9 @@ task unitTest(type: Test) {
     def _ensure_gradle_properties(self, project_dir: str):
         """Ensure gradle.properties has the proper Fabric mod structure and configuration."""
         gradle_props_path = os.path.join(project_dir, "gradle.properties")
-
-        # Always create/overwrite gradle.properties with the standard Fabric template format
+        
+        # Create gradle.properties with standard Fabric format
+        # This overwrites any existing file to ensure consistency
         gradle_props_content = f"""# Done to increase the memory available to gradle.
 org.gradle.jvmargs=-Xmx1G
 org.gradle.parallel=true
@@ -2103,3 +2136,24 @@ public class {class_name} implements FabricClientGameTest {{
             os.path.join(gametest_dir, f"{class_name}.java"), "w", encoding="utf-8"
         ) as f:
             f.write(client_test_content)
+
+    def _has_game_tests(self, project_dir: str) -> bool:
+        """Check if game test files exist in the project.
+        
+        Args:
+            project_dir (str): The root directory of the mod project.
+            
+        Returns:
+            bool: True if game test files are found, False otherwise.
+        """
+        gametest_java_dir = os.path.join(project_dir, "src", "gametest", "java")
+        if not os.path.exists(gametest_java_dir):
+            return False
+            
+        # Check for any .java files in the gametest directory
+        for root, dirs, files in os.walk(gametest_java_dir):
+            for file in files:
+                if file.endswith('.java'):
+                    return True
+        
+        return False
