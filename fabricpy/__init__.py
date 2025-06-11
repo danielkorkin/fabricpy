@@ -8,7 +8,7 @@ registration, recipe creation, and project compilation.
 This module exposes all the main classes and utilities needed to create Fabric mods:
 
 - ModConfig: Main configuration and compilation class
-- Item/FoodItem: Item registration classes  
+- Item/FoodItem: Item registration classes
 - Block: Block registration class
 - ItemGroup: Custom creative tab creation
 - RecipeJson: Recipe definition helper
@@ -22,7 +22,7 @@ Example:
         # Create mod configuration
         mymod = fabricpy.ModConfig(
             mod_id="mymod",
-            name="My Mod", 
+            name="My Mod",
             version="1.0.0",
             description="A simple example mod",
             authors=["Your Name"]
@@ -43,13 +43,13 @@ Attributes:
     __all__ (list): List of public API symbols exported by this module.
 """
 
-from .modconfig import ModConfig
-from .item import Item
-from .fooditem import FoodItem
-from .block import Block
-from .itemgroup import ItemGroup
-from .recipejson import RecipeJson  # ← NEW import
 from . import item_group
+from .block import Block
+from .fooditem import FoodItem
+from .item import Item
+from .itemgroup import ItemGroup
+from .modconfig import ModConfig
+from .recipejson import RecipeJson  # ← NEW import
 
 __all__ = [
     "ModConfig",

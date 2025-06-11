@@ -8,16 +8,16 @@ Items can have custom textures, recipes, stack sizes, and be assigned to creativ
 
 class Item:
     """Represents a custom item in a Fabric mod.
-    
+
     The Item class handles the definition of custom items including their properties,
     textures, recipes, and creative tab assignment. Items are registered with a ModConfig
     instance and compiled into the final mod.
-    
+
     Args:
         id: The registry identifier for the item (e.g., "mymod:example_item").
             If None, must be set before compilation.
         name: The display name for the item shown in-game.
-            If None, must be set before compilation.  
+            If None, must be set before compilation.
         max_stack_size: Maximum number of items that can be stacked together.
             Defaults to 64.
         texture_path: Path to the item's texture file relative to mod resources.
@@ -26,7 +26,7 @@ class Item:
             instance or None for no recipe.
         item_group: Creative tab to place this item in. Can be an ItemGroup
             instance, a string constant from item_group module, or None.
-            
+
     Attributes:
         id (str): The registry identifier for the item.
         name (str): The display name for the item.
@@ -34,10 +34,10 @@ class Item:
         texture_path (str): Path to the item's texture file.
         recipe (RecipeJson): Recipe definition for crafting this item.
         item_group (ItemGroup | str): Creative tab assignment for the item.
-        
+
     Example:
         Creating a basic item::
-        
+
             item = Item(
                 id="mymod:copper_sword",
                 name="Copper Sword",
@@ -45,9 +45,9 @@ class Item:
                 texture_path="textures/items/copper_sword.png",
                 item_group=fabricpy.item_group.COMBAT
             )
-            
+
         Creating an item with a recipe::
-        
+
             recipe = RecipeJson({
                 "type": "minecraft:crafting_shaped",
                 "pattern": ["#", "#", "/"],
@@ -57,14 +57,14 @@ class Item:
                 },
                 "result": {"id": "mymod:copper_sword", "count": 1}
             })
-            
+
             item = Item(
                 id="mymod:copper_sword",
                 name="Copper Sword",
                 recipe=recipe
             )
     """
-    
+
     def __init__(
         self,
         id: str | None = None,
@@ -75,7 +75,7 @@ class Item:
         item_group: object | str | None = None,
     ):
         """Initialize a new Item instance.
-        
+
         Args:
             id: The registry identifier for the item.
             name: The display name for the item.

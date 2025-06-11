@@ -10,6 +10,7 @@ of recipe data, with validation and convenient access to recipe properties.
 """
 
 from __future__ import annotations
+
 import json
 from typing import Any
 
@@ -87,7 +88,7 @@ class RecipeJson:
         # minimal sanity-check – make sure the mandatory "type" key exists and is a non-empty string
         if "type" not in self.data:
             raise ValueError("Recipe JSON must contain a 'type' field")
-        
+
         recipe_type = self.data["type"]
         if not isinstance(recipe_type, str) or not recipe_type.strip():
             raise ValueError("Recipe 'type' field must be a non-empty string")
@@ -121,7 +122,7 @@ class RecipeJson:
 
                 # Dictionary result format (pre-1.21)
                 recipe3 = RecipeJson({
-                    "type": "minecraft:crafting_shaped", 
+                    "type": "minecraft:crafting_shaped",
                     "result": {"item": "mymod:legacy_item", "count": 1}
                 })
                 print(recipe3.result_id)  # "mymod:legacy_item"
@@ -129,11 +130,11 @@ class RecipeJson:
         res = self.data.get("result")
         if res is None:
             return None
-        
+
         # Handle string results
         if isinstance(res, str):
             return res
-        
+
         # Handle dict results
         if isinstance(res, dict):
             # 1.21+: "id"; pre-1.21 uses "item" – support either
@@ -141,16 +142,16 @@ class RecipeJson:
             result_id = res.get("id")
             if isinstance(result_id, str):
                 return result_id
-            
+
             result_item = res.get("item")
             if isinstance(result_item, str):
                 return result_item
-            
+
             return None
-        
+
         # Handle other types (numbers, booleans, etc.) - return None
         return None
-    
+
     def get_result_id(self) -> str | None:
         """Get the result ID from the recipe.
 

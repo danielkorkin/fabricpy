@@ -10,11 +10,11 @@ from .item import Item
 
 class FoodItem(Item):
     """Represents a custom food item in a Fabric mod.
-    
+
     FoodItem extends the base Item class to add food-specific properties
     including nutrition value, saturation, and whether the item can always
     be eaten regardless of hunger level.
-    
+
     Args:
         id: The registry identifier for the food item (e.g., "mymod:golden_apple").
             If None, must be set before compilation.
@@ -35,15 +35,15 @@ class FoodItem(Item):
         item_group: Creative tab to place this item in. Can be an ItemGroup
             instance, a string constant from item_group module, or None.
             Typically FOOD_AND_DRINK for food items.
-            
+
     Attributes:
         nutrition (int): Hunger points restored when eaten.
         saturation (float): Saturation value provided when eaten.
         always_edible (bool): Whether the food can always be eaten.
-        
+
     Example:
         Creating a basic food item::
-        
+
             apple = FoodItem(
                 id="mymod:golden_apple",
                 name="Golden Apple",
@@ -52,9 +52,9 @@ class FoodItem(Item):
                 always_edible=True,
                 item_group=fabricpy.item_group.FOOD_AND_DRINK
             )
-            
+
         Creating a food item with a recipe::
-        
+
             recipe = RecipeJson({
                 "type": "minecraft:crafting_shaped",
                 "pattern": ["###", "#A#", "###"],
@@ -64,7 +64,7 @@ class FoodItem(Item):
                 },
                 "result": {"id": "mymod:golden_apple", "count": 1}
             })
-            
+
             apple = FoodItem(
                 id="mymod:golden_apple",
                 name="Golden Apple",
@@ -73,7 +73,7 @@ class FoodItem(Item):
                 recipe=recipe
             )
     """
-    
+
     def __init__(
         self,
         id: str | None = None,
@@ -87,7 +87,7 @@ class FoodItem(Item):
         item_group: object | str | None = None,
     ):
         """Initialize a new FoodItem instance.
-        
+
         Args:
             id: The registry identifier for the food item.
             name: The display name for the food item.

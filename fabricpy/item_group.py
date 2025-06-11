@@ -10,17 +10,17 @@ vanilla Minecraft. For custom creative tabs, use the ItemGroup class instead.
 
 Example:
     Assigning an item to a vanilla creative tab::
-    
+
         import fabricpy
-        
+
         item = fabricpy.Item(
             id="mymod:copper_sword",
             name="Copper Sword",
             item_group=fabricpy.item_group.COMBAT
         )
-        
+
         block = fabricpy.Block(
-            id="mymod:marble_block", 
+            id="mymod:marble_block",
             name="Marble Block",
             item_group=fabricpy.item_group.BUILDING_BLOCKS
         )

@@ -76,15 +76,16 @@ class ModConfig:
                 description="Adds cool items to Minecraft",
                 authors=["Your Name"]
             )
-            
+
             # Register an item
             item = Item(id="mymod:cool_item", name="Cool Item")
             mod.registerItem(item)
-            
+
             # Compile and run
             mod.compile()
             mod.run()
     """
+
     # ------------------------------------------------------------------ #
     # constructor / registration                                         #
     # ------------------------------------------------------------------ #
@@ -128,7 +129,7 @@ class ModConfig:
                 config = ModConfig(
                     mod_id="awesome_mod",
                     name="Awesome Mod",
-                    description="Makes Minecraft more awesome",  
+                    description="Makes Minecraft more awesome",
                     version="1.2.3",
                     authors=["Alice", "Bob"],
                     project_dir="my-awesome-mod"
@@ -228,12 +229,12 @@ class ModConfig:
                 config._to_java_constant("123invalid")       # "_123INVALID"
         """
         # Replace common invalid characters with underscores
-        valid_name = re.sub(r'[:\-\.\s]+', '_', id_string)
+        valid_name = re.sub(r"[:\-\.\s]+", "_", id_string)
         # Remove any remaining non-alphanumeric characters except underscores
-        valid_name = re.sub(r'[^a-zA-Z0-9_]', '', valid_name)
+        valid_name = re.sub(r"[^a-zA-Z0-9_]", "", valid_name)
         # Ensure it doesn't start with a digit
         if valid_name and valid_name[0].isdigit():
-            valid_name = '_' + valid_name
+            valid_name = "_" + valid_name
         return valid_name.upper()
 
     # ------------------------------------------------------------------ #
@@ -266,7 +267,7 @@ class ModConfig:
 
                 mod.registerItem(Item(id="mymod:test", name="Test"))
                 mod.compile()  # Creates complete mod project
-                
+
         Note:
             This method must be called before build() or run().
         """
@@ -315,10 +316,10 @@ class ModConfig:
         # 5) Fabric testing integration ---------------------------------
         if self.enable_testing:
             self.setup_fabric_testing(self.project_dir)
-            
+
             if self.generate_unit_tests:
                 self.generate_fabric_unit_tests(self.project_dir)
-                
+
             if self.generate_game_tests:
                 self.generate_fabric_game_tests(self.project_dir)
 
@@ -366,7 +367,7 @@ class ModConfig:
             path (str): Path to the fabric.mod.json file to update.
             data (dict): Dictionary containing the metadata to update. Common keys include:
                 - id: Mod identifier
-                - name: Mod display name  
+                - name: Mod display name
                 - version: Mod version string
                 - description: Mod description
                 - authors: List of author names
@@ -451,7 +452,7 @@ class ModConfig:
                     recipe=RecipeJson({...})
                 )
                 mod.registerItem(item)
-                
+
                 # This will create the recipe file
                 mod.write_recipe_files(project_dir, "mymod")
         """
@@ -520,7 +521,7 @@ class ModConfig:
             Generated files include:
             - TutorialItems.java: Static registration for all mod items
             - CustomItem.java: Base class for items with custom behavior
-            
+
         Example:
             Creating item files::
 
@@ -561,14 +562,14 @@ class ModConfig:
 
     def _tutorial_items_src(self, pkg: str) -> str:
         """Generate Java source code for the TutorialItems class.
-        
+
         Creates a complete Java class that registers all mod items, including
         proper imports, constant declarations, registration logic, and vanilla
         item group integration.
-        
+
         Args:
             pkg (str): The Java package name for the generated class.
-            
+
         Returns:
             str: Complete Java source code for the TutorialItems class.
         """
@@ -613,7 +614,7 @@ class ModConfig:
             else:
                 settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
                 factory = "CustomItem::new"
-            
+
             # Extract just the path part if the ID is namespaced
             item_path = itm.id.split(":", 1)[-1]
             L.append(
@@ -652,13 +653,13 @@ class ModConfig:
 
     def _custom_item_src(self, pkg: str) -> str:
         """Generate Java source code for the CustomItem class.
-        
+
         Creates a simple custom item class that extends Minecraft's Item class
         with example behavior (playing a sound when used).
-        
+
         Args:
             pkg (str): The Java package name for the generated class.
-            
+
         Returns:
             str: Complete Java source code for the CustomItem class.
         """
@@ -746,14 +747,14 @@ public class CustomItem extends Item {{
 
     def _tutorial_itemgroups_src(self, pkg: str) -> str:
         """Generate Java source code for the TutorialItemGroups class.
-        
+
         Creates a complete Java class that registers all custom item groups
         (creative tabs) defined in the mod, including proper registry keys,
         icons, display names, and item additions.
-        
+
         Args:
             pkg (str): The Java package name for the generated class.
-            
+
         Returns:
             str: Complete Java source code for the TutorialItemGroups class.
         """
@@ -781,7 +782,9 @@ public class CustomItem extends Item {{
         group_entries: Dict[ItemGroup, List[str]] = defaultdict(list)
         for itm in self.registered_items:
             if isinstance(itm.item_group, ItemGroup):
-                group_entries[itm.item_group].append(f"TutorialItems.{self._to_java_constant(itm.id)}")
+                group_entries[itm.item_group].append(
+                    f"TutorialItems.{self._to_java_constant(itm.id)}"
+                )
         for blk in self.registered_blocks:
             if isinstance(blk.item_group, ItemGroup):
                 group_entries[blk.item_group].append(
@@ -827,7 +830,7 @@ public class CustomItem extends Item {{
 
     def update_mod_initializer(self, project_dir, pkg):
         """Add item initialization code to the mod's main initializer.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             pkg (str): The Java package name containing the TutorialItems class.
@@ -836,7 +839,7 @@ public class CustomItem extends Item {{
 
     def update_mod_initializer_itemgroups(self, project_dir, pkg):
         """Add item group initialization code to the mod's main initializer.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             pkg (str): The Java package name containing the TutorialItemGroups class.
@@ -848,7 +851,7 @@ public class CustomItem extends Item {{
 
     def update_mod_initializer_blocks(self, project_dir, pkg):
         """Add block initialization code to the mod's main initializer.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             pkg (str): The Java package name containing the TutorialBlocks class.
@@ -923,10 +926,10 @@ public class CustomItem extends Item {{
             if not itm.texture_path or not os.path.exists(itm.texture_path):
                 print(f"SKIP texture for `{itm.id}`")
                 continue
-            
+
             # Extract just the path part if the ID is namespaced
             item_path = itm.id.split(":", 1)[-1]
-            
+
             shutil.copy(itm.texture_path, os.path.join(tex_dir, f"{item_path}.png"))
             with open(
                 os.path.join(mdl_dir, f"{item_path}.json"), "w", encoding="utf-8"
@@ -955,10 +958,10 @@ public class CustomItem extends Item {{
 
     def update_item_lang_file(self, project_dir, mod_id):
         """Update the English language file with item translations.
-        
+
         Adds or updates translation entries for all registered items in the
         mod's en_us.json language file.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             mod_id (str): The mod's identifier for namespacing translations.
@@ -998,9 +1001,9 @@ public class CustomItem extends Item {{
 
     def update_item_group_lang_entries(self, project_dir, mod_id):
         """Update the English language file with item group translations.
-        
+
         Adds translation entries for all custom item groups defined in the mod.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             mod_id (str): The mod's identifier for namespacing translations.
@@ -1046,10 +1049,10 @@ public class CustomItem extends Item {{
 
     def create_block_files(self, project_dir, package_path):
         """Generate Java source files for all registered blocks.
-        
+
         Creates the TutorialBlocks.java and CustomBlock.java files containing
         block registration and implementation logic.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             package_path (str): The Java package path for the block classes.
@@ -1085,14 +1088,14 @@ public class CustomItem extends Item {{
 
     def _tutorial_blocks_src(self, pkg: str) -> str:
         """Generate Java source code for the TutorialBlocks class.
-        
+
         Creates a complete Java class that registers all mod blocks, including
         proper imports, constant declarations, registration logic, and vanilla
         item group integration.
-        
+
         Args:
             pkg (str): The Java package name for the generated class.
-            
+
         Returns:
             str: Complete Java source code for the TutorialBlocks class.
         """
@@ -1167,12 +1170,12 @@ public class CustomItem extends Item {{
 
     def _custom_block_src(self, pkg: str) -> str:
         """Generate Java source code for the CustomBlock class.
-        
+
         Creates a simple custom block class that extends Minecraft's Block class.
-        
+
         Args:
             pkg (str): The Java package name for the generated class.
-            
+
         Returns:
             str: Complete Java source code for the CustomBlock class.
         """
@@ -1190,11 +1193,11 @@ public class CustomBlock extends Block {{
 
     def copy_block_textures_and_generate_models(self, project_dir, mod_id):
         """Copy block textures and generate model/blockstate JSON files.
-        
+
         Processes all registered blocks by copying their texture files and
         generating the corresponding model, blockstate, and item definition
         JSON files required by Minecraft's resource pack system.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             mod_id (str): The mod's identifier for namespacing resources.
@@ -1305,11 +1308,11 @@ public class CustomBlock extends Block {{
 
     def update_block_lang_file(self, project_dir, mod_id):
         """Update the English language file with block translations.
-        
+
         Adds or updates translation entries for all registered blocks in the
         mod's en_us.json language file. Creates entries for both the block
         and its corresponding item form.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
             mod_id (str): The mod's identifier for namespacing translations.
@@ -1356,7 +1359,7 @@ public class CustomBlock extends Block {{
     def build(self):
         """Build the mod JAR file using Gradle.
 
-        Requires compile() to have been called first. Enters the mod project 
+        Requires compile() to have been called first. Enters the mod project
         directory and runs `./gradlew build` to produce the distributable JAR file.
 
         The built JAR will be located in the `build/libs/` directory of the project.
@@ -1390,12 +1393,14 @@ public class CustomBlock extends Block {{
         Example:
             Running the mod for testing::
 
-                mod.compile()  # Must be called first  
+                mod.compile()  # Must be called first
                 mod.run()      # Launches Minecraft with the mod
         """
         if not os.path.exists(self.project_dir):
-            raise FileNotFoundError(f"Project directory '{self.project_dir}' does not exist. Run compile() first.")
-        
+            raise FileNotFoundError(
+                f"Project directory '{self.project_dir}' does not exist. Run compile() first."
+            )
+
         print(f"Running mod '{self.name}' in development mode...")
         original_cwd = os.getcwd()
         try:
@@ -1425,31 +1430,31 @@ public class CustomBlock extends Block {{
             themselves (see generate_fabric_unit_tests and generate_fabric_game_tests).
         """
         print("Setting up Fabric testing framework...")
-        
+
         # Enhance build.gradle with testing dependencies and configuration
         self._enhance_build_gradle_for_testing(project_dir)
-        
+
         # Create gradle.properties if needed
         self._ensure_gradle_properties(project_dir)
-        
+
         print("Fabric testing framework setup complete.")
 
     def _enhance_build_gradle_for_testing(self, project_dir: str):
         """Add Fabric testing configuration to build.gradle."""
         build_gradle_path = os.path.join(project_dir, "build.gradle")
-        
+
         if not os.path.exists(build_gradle_path):
             return
-        
-        with open(build_gradle_path, 'r', encoding='utf-8') as f:
+
+        with open(build_gradle_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # Check if testing is already configured
         if "fabric-loader-junit" in content:
             return
-        
+
         # Add testing configuration
-        testing_config = '''
+        testing_config = """
 
 // Fabric Testing Configuration Added by fabricpy
 dependencies {
@@ -1485,32 +1490,32 @@ task unitTest(type: Test) {
     include '**/*Test.class'
     exclude '**/*GameTest.class'
 }
-'''
-        
-        with open(build_gradle_path, 'a', encoding='utf-8') as f:
+"""
+
+        with open(build_gradle_path, "a", encoding="utf-8") as f:
             f.write(testing_config)
 
     def _ensure_gradle_properties(self, project_dir: str):
         """Ensure gradle.properties has necessary testing properties."""
         gradle_props_path = os.path.join(project_dir, "gradle.properties")
-        
+
         if not os.path.exists(gradle_props_path):
             return
-        
-        with open(gradle_props_path, 'r', encoding='utf-8') as f:
+
+        with open(gradle_props_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         # Add testing-related properties if missing
         additional_props = []
-        
+
         if "org.gradle.jvmargs" not in content:
             additional_props.append("org.gradle.jvmargs=-Xmx2G")
-        
+
         if "org.gradle.parallel" not in content:
             additional_props.append("org.gradle.parallel=true")
-        
+
         if additional_props:
-            with open(gradle_props_path, 'a', encoding='utf-8') as f:
+            with open(gradle_props_path, "a", encoding="utf-8") as f:
                 f.write("\n# Testing configuration added by fabricpy\n")
                 for prop in additional_props:
                     f.write(f"{prop}\n")
@@ -1534,23 +1539,33 @@ task unitTest(type: Test) {
             Test files are placed in src/test/java/ following standard conventions.
         """
         print("Generating Fabric unit tests...")
-        
-        test_dir = os.path.join(project_dir, "src", "test", "java", "com", "example", 
-                               self.mod_id.replace("-", "").replace("_", ""), "test")
+
+        test_dir = os.path.join(
+            project_dir,
+            "src",
+            "test",
+            "java",
+            "com",
+            "example",
+            self.mod_id.replace("-", "").replace("_", ""),
+            "test",
+        )
         os.makedirs(test_dir, exist_ok=True)
-        
+
         # Generate comprehensive unit tests
         self._generate_item_registration_test(test_dir)
         self._generate_recipe_validation_test(test_dir)
         self._generate_mod_integration_test(test_dir)
-        
+
         print("Unit tests generated.")
 
     def _generate_item_registration_test(self, test_dir: str):
         """Generate unit test for item registration."""
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
-        
-        test_content = f'''package {package_name};
+        package_name = (
+            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        )
+
+        test_content = f"""package {package_name};
 
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -1588,7 +1603,7 @@ public class ItemRegistrationTest {{
     @Test
     @DisplayName("Test all mod items are properly registered")
     void testItemsAreRegistered() {{
-'''
+"""
 
         # Add tests for each registered item
         for item in self.registered_items:
@@ -1605,7 +1620,7 @@ public class ItemRegistrationTest {{
         Assertions.assertFalse({safe_name}_stack.isEmpty(), "{item.name} ItemStack should not be empty");
 '''
 
-        test_content += '''
+        test_content += """
     }
 
     @Test
@@ -1619,11 +1634,11 @@ public class ItemRegistrationTest {{
     @Test
     @DisplayName("Test food item properties")
     void testFoodItemProperties() {
-'''
+"""
 
         # Add food-specific tests
         for item in self.registered_items:
-            if hasattr(item, 'nutrition') and item.nutrition is not None:
+            if hasattr(item, "nutrition") and item.nutrition is not None:
                 item_id = item.id
                 if ":" in item_id:
                     namespace, path = item_id.split(":", 1)
@@ -1638,35 +1653,39 @@ public class ItemRegistrationTest {{
         Assertions.assertEquals({item.nutrition}, foodComponent.nutrition(), 
             "{item.name} should have nutrition value of {item.nutrition}");
 '''
-                    
-                    if hasattr(item, 'saturation') and item.saturation is not None:
+
+                    if hasattr(item, "saturation") and item.saturation is not None:
                         test_content += f'''
         Assertions.assertEquals({item.saturation}f, foodComponent.saturation(), 0.001f,
             "{item.name} should have saturation value of {item.saturation}");
 '''
 
-        test_content += '''
+        test_content += """
         Assertions.assertTrue(true, "Food item property tests completed");
     }
 }
-'''
+"""
 
-        with open(os.path.join(test_dir, "ItemRegistrationTest.java"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(test_dir, "ItemRegistrationTest.java"), "w", encoding="utf-8"
+        ) as f:
             f.write(test_content)
 
     def _generate_recipe_validation_test(self, test_dir: str):
         """Generate unit test for recipe validation.
-        
+
         Creates a comprehensive test that validates all recipes associated with
         registered items and blocks, ensuring they can be properly loaded and
         processed by Minecraft's recipe system.
-        
+
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
-        
-        test_content = f'''package {package_name};
+        package_name = (
+            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        )
+
+        test_content = f"""package {package_name};
 
 import net.minecraft.recipe.RecipeType;
 import net.minecraft.util.Identifier;
@@ -1693,29 +1712,33 @@ public class RecipeValidationTest {{
     @Test
     @DisplayName("Test recipe types are valid")
     void testRecipeTypes() {{
-'''
+"""
 
         # Collect recipe types used
         recipe_types_used = set()
         items_with_recipes = []
-        
+
         for item in self.registered_items:
-            if hasattr(item, 'recipe') and item.recipe and hasattr(item.recipe, 'data'):
-                recipe_type = item.recipe.data.get('type')
+            if hasattr(item, "recipe") and item.recipe and hasattr(item.recipe, "data"):
+                recipe_type = item.recipe.data.get("type")
                 if recipe_type:
                     recipe_types_used.add(recipe_type)
                     items_with_recipes.append((item, recipe_type))
 
         for block in self.registered_blocks:
-            if hasattr(block, 'recipe') and block.recipe and hasattr(block.recipe, 'data'):
-                recipe_type = block.recipe.data.get('type')
+            if (
+                hasattr(block, "recipe")
+                and block.recipe
+                and hasattr(block.recipe, "data")
+            ):
+                recipe_type = block.recipe.data.get("type")
                 if recipe_type:
                     recipe_types_used.add(recipe_type)
 
         if recipe_types_used:
-            test_content += '''
+            test_content += """
         // Test that all recipe types used in our mod are valid
-'''
+"""
             for recipe_type in recipe_types_used:
                 test_content += f'''
         // Recipe type: {recipe_type}
@@ -1725,18 +1748,18 @@ public class RecipeValidationTest {{
         }}, "{recipe_type} should be a valid recipe type");
 '''
 
-        test_content += '''
+        test_content += """
         Assertions.assertTrue(true, "Recipe type validation completed");
     }
 
     @Test
     @DisplayName("Test recipe result IDs match item IDs")
     void testRecipeResultIds() {
-'''
+"""
 
         # Test recipe results
         for item, recipe_type in items_with_recipes:
-            if hasattr(item.recipe, 'get_result_id'):
+            if hasattr(item.recipe, "get_result_id"):
                 result_id = item.recipe.get_result_id()
                 if result_id:
                     test_content += f'''
@@ -1745,28 +1768,32 @@ public class RecipeValidationTest {{
             "Recipe result ID should match item ID for {item.name}");
 '''
 
-        test_content += '''
+        test_content += """
         Assertions.assertTrue(true, "Recipe result ID validation completed");
     }
 }
-'''
+"""
 
-        with open(os.path.join(test_dir, "RecipeValidationTest.java"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(test_dir, "RecipeValidationTest.java"), "w", encoding="utf-8"
+        ) as f:
             f.write(test_content)
 
     def _generate_mod_integration_test(self, test_dir: str):
         """Generate integration test for complete mod functionality.
-        
+
         Creates a comprehensive integration test that verifies all mod components
         work together correctly, including item registration, block registration,
         and cross-component interactions.
-        
+
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
-        
-        test_content = f'''package {package_name};
+        package_name = (
+            f"com.example.{self.mod_id.replace('-', '').replace('_', '')}.test"
+        )
+
+        test_content = f"""package {package_name};
 
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
@@ -1803,7 +1830,7 @@ public class ModIntegrationTest {{
     @Test
     @DisplayName("Test all mod items are in registry")
     void testItemRegistryIntegration() {{
-'''
+"""
 
         # Test each item is in registry
         for item in self.registered_items:
@@ -1815,13 +1842,13 @@ public class ModIntegrationTest {{
             "{item.name} should be registered in item registry");
 '''
 
-        test_content += '''
+        test_content += """
     }
 
     @Test
     @DisplayName("Test all mod blocks are in registry")
     void testBlockRegistryIntegration() {
-'''
+"""
 
         # Test each block is in registry
         for block in self.registered_blocks:
@@ -1833,12 +1860,14 @@ public class ModIntegrationTest {{
             "{block.name} should be registered in block registry");
 '''
 
-        test_content += '''
+        test_content += """
     }
 }
-'''
+"""
 
-        with open(os.path.join(test_dir, "ModIntegrationTest.java"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(test_dir, "ModIntegrationTest.java"), "w", encoding="utf-8"
+        ) as f:
             f.write(test_content)
 
     def generate_fabric_game_tests(self, project_dir: str):
@@ -1860,19 +1889,26 @@ public class ModIntegrationTest {{
             a separate fabric.mod.json for the test environment.
         """
         print("Generating Fabric game tests...")
-        
+
         # Create game test directory structure
-        gametest_dir = os.path.join(project_dir, "src", "gametest", "java", "com", "example", 
-                                   self.mod_id.replace("-", "").replace("_", ""))
+        gametest_dir = os.path.join(
+            project_dir,
+            "src",
+            "gametest",
+            "java",
+            "com",
+            "example",
+            self.mod_id.replace("-", "").replace("_", ""),
+        )
         os.makedirs(gametest_dir, exist_ok=True)
-        
+
         # Create gametest fabric.mod.json
         self._create_gametest_fabric_mod_json(project_dir)
-        
+
         # Generate server and client game tests
         self._generate_server_game_test(gametest_dir)
         self._generate_client_game_test(gametest_dir)
-        
+
         print("Game tests generated.")
 
     def _create_gametest_fabric_mod_json(self, project_dir: str):
@@ -1881,7 +1917,7 @@ public class ModIntegrationTest {{
         os.makedirs(gametest_resources, exist_ok=True)
 
         package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
-        
+
         fabric_mod_json = {
             "schemaVersion": 1,
             "id": f"{self.mod_id}-test",
@@ -1896,24 +1932,28 @@ public class ModIntegrationTest {{
                 ],
                 "fabric-client-gametest": [
                     f"{package_name}.{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
-                ]
+                ],
             },
             "depends": {
                 "fabricloader": ">=0.15.0",
                 "fabric-api": "*",
-                "minecraft": "~1.21.0"
-            }
+                "minecraft": "~1.21.0",
+            },
         }
 
-        with open(os.path.join(gametest_resources, "fabric.mod.json"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(gametest_resources, "fabric.mod.json"), "w", encoding="utf-8"
+        ) as f:
             json.dump(fabric_mod_json, f, indent=2)
 
     def _generate_server_game_test(self, gametest_dir: str):
         """Generate server-side game tests."""
         package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
-        class_name = f"{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+        class_name = (
+            f"{self.mod_id.replace('-', '').replace('_', '').title()}ServerTest"
+        )
 
-        server_test_content = f'''package {package_name};
+        server_test_content = f"""package {package_name};
 
 import net.minecraft.block.Blocks;
 import net.minecraft.item.ItemStack;
@@ -1935,7 +1975,7 @@ public class {class_name} implements FabricGameTest {{
     @GameTest(templateName = EMPTY_STRUCTURE, timeoutTicks = 200)
     public void testItemFunctionality(TestContext context) {{
         // Test that all mod items work in game context
-'''
+"""
 
         # Add tests for each item
         for item in self.registered_items:
@@ -1953,12 +1993,12 @@ public class {class_name} implements FabricGameTest {{
 '''
 
                 # Add food-specific tests
-                if hasattr(item, 'nutrition'):
+                if hasattr(item, "nutrition"):
                     server_test_content += f'''
         context.assertTrue({safe_name}_stack.isFood(), "{item.name} should be edible");
 '''
 
-        server_test_content += '''
+        server_test_content += """
         
         context.complete();
     }
@@ -1970,7 +2010,7 @@ public class {class_name} implements FabricGameTest {{
         
         // Start with air
         context.expectBlock(Blocks.AIR, testPos);
-'''
+"""
 
         # Add block tests
         for block in self.registered_blocks:
@@ -1993,20 +2033,24 @@ public class {class_name} implements FabricGameTest {{
         context.expectBlock(Blocks.AIR, testPos);
 '''
 
-        server_test_content += '''
+        server_test_content += """
         
         context.complete();
     }
 }
-'''
+"""
 
-        with open(os.path.join(gametest_dir, f"{class_name}.java"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(gametest_dir, f"{class_name}.java"), "w", encoding="utf-8"
+        ) as f:
             f.write(server_test_content)
 
     def _generate_client_game_test(self, gametest_dir: str):
         """Generate client-side game tests."""
         package_name = f"com.example.{self.mod_id.replace('-', '').replace('_', '')}"
-        class_name = f"{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+        class_name = (
+            f"{self.mod_id.replace('-', '').replace('_', '').title()}ClientTest"
+        )
 
         client_test_content = f'''package {package_name};
 
@@ -2045,5 +2089,7 @@ public class {class_name} implements FabricClientGameTest {{
 }}
 '''
 
-        with open(os.path.join(gametest_dir, f"{class_name}.java"), 'w', encoding='utf-8') as f:
+        with open(
+            os.path.join(gametest_dir, f"{class_name}.java"), "w", encoding="utf-8"
+        ) as f:
             f.write(client_test_content)
