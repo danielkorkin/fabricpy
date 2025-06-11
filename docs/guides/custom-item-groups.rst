@@ -25,7 +25,7 @@ Simple Custom Tab
 
    # Create a custom creative tab
    my_weapons = fabricpy.ItemGroup(
-       id="my_weapons",
+       id="my_weapons"
        name="My Weapons"
    )
 
@@ -53,16 +53,16 @@ Food-Themed Tab
 
    # Create a food-themed tab
    custom_foods = fabricpy.ItemGroup(
-       id="custom_foods",
+       id="custom_foods"
        name="Custom Foods"
    )
 
    # Create a signature food item to use as icon
    golden_apple = fabricpy.FoodItem(
-       id="mymod:golden_apple",
-       name="Golden Apple",
-       nutrition=6,
-       saturation=12.0,
+       id="mymod:golden_apple"
+       name="Golden Apple"
+       nutrition=6
+       saturation=12.0
        item_group=custom_foods  # Assign to custom tab
    )
 
@@ -82,11 +82,10 @@ Magic-Themed Tab
 
    # Create magical items for this tab
    magic_wand = fabricpy.Item(
-       id="mymod:magic_wand",
-       name="Magic Wand",
-       item_group=magic_items,
-       max_stack_size=1,
-       rarity="EPIC"
+       id="mymod:magic_wand"
+       name="Magic Wand"
+       item_group=magic_items
+       max_stack_size=1
    )
 
    # Use the wand as the tab icon
@@ -99,23 +98,22 @@ Tech/Machinery Tab
 
    # Create a technology tab
    tech_items = fabricpy.ItemGroup(
-       id="tech_items",
+       id="tech_items"
        name="Technology"
    )
 
    # Create tech items
    circuit_board = fabricpy.Item(
-       id="mymod:circuit_board",
+       id="mymod:circuit_board"
        name="Circuit Board", 
        item_group=tech_items
    )
 
    robot = fabricpy.Item(
-       id="mymod:robot",
-       name="Robot",
-       item_group=tech_items,
-       max_stack_size=1,
-       rarity="RARE"
+       id="mymod:robot"
+       name="Robot"
+       item_group=tech_items
+       max_stack_size=1
    )
 
    # Use the robot as icon
@@ -131,24 +129,24 @@ Assigning Items to Custom Tabs
 
    # Create the custom tab
    gems_tab = fabricpy.ItemGroup(
-       id="precious_gems",
+       id="precious_gems"
        name="Precious Gems"
    )
 
    # Create items assigned to the custom tab
    gems = [
        fabricpy.Item(
-           id="mymod:ruby",
-           name="Ruby",
+           id="mymod:ruby"
+           name="Ruby"
            item_group=gems_tab  # Assign to custom tab
-       ),
+       )
        fabricpy.Item(
            id="mymod:sapphire", 
-           name="Sapphire",
+           name="Sapphire"
            item_group=gems_tab
-       ),
+       )
        fabricpy.Item(
-           id="mymod:emerald_shard",
+           id="mymod:emerald_shard"
            name="Emerald Shard", 
            item_group=gems_tab
        )
@@ -164,27 +162,27 @@ Mixed Content Tab
 
    # Tab for various mod content
    mod_content = fabricpy.ItemGroup(
-       id="my_mod_items",
+       id="my_mod_items"
        name="My Mod"
    )
 
    # Mix of different item types
    items = [
        fabricpy.Item(
-           id="mymod:special_tool",
-           name="Special Tool",
+           id="mymod:special_tool"
+           name="Special Tool"
            item_group=mod_content
-       ),
+       )
        fabricpy.FoodItem(
-           id="mymod:magic_bread",
-           name="Magic Bread",
-           nutrition=5,
-           saturation=6.0,
+           id="mymod:magic_bread"
+           name="Magic Bread"
+           nutrition=5
+           saturation=6.0
            item_group=mod_content
-       ),
+       )
        fabricpy.Block(
-           id="mymod:custom_block",
-           name="Custom Block",
+           id="mymod:custom_block"
+           name="Custom Block"
            item_group=mod_content  # BlockItems use this too
        )
    ]
@@ -203,16 +201,16 @@ Here's a complete mod with multiple custom item groups:
 
    # Create mod
    mod = fabricpy.ModConfig(
-       mod_id="fantasy_mod",
-       name="Fantasy Mod",
-       version="1.0.0",
-       description="Adds fantasy elements to Minecraft",
+       mod_id="fantasy_mod"
+       name="Fantasy Mod"
+       version="1.0.0"
+       description="Adds fantasy elements to Minecraft"
        authors=["Fantasy Creator"]
    )
 
    # Create custom item groups
    weapons_tab = fabricpy.ItemGroup(
-       id="fantasy_weapons",
+       id="fantasy_weapons"
        name="Fantasy Weapons"
    )
 
@@ -222,83 +220,75 @@ Here's a complete mod with multiple custom item groups:
    )
 
    materials_tab = fabricpy.ItemGroup(
-       id="fantasy_materials",
+       id="fantasy_materials"
        name="Fantasy Materials"
    )
 
    # Create weapons for weapons tab
    weapons = [
        fabricpy.Item(
-           id="fantasy_mod:crystal_sword",
-           name="Crystal Sword",
-           item_group=weapons_tab,
-           max_stack_size=1,
-           rarity="RARE"
-       ),
+           id="fantasy_mod:crystal_sword"
+           name="Crystal Sword"
+           item_group=weapons_tab
+           max_stack_size=1
+       )
        fabricpy.Item(
-           id="fantasy_mod:magic_bow",
-           name="Magic Bow",
-           item_group=weapons_tab,
-           max_stack_size=1,
-           rarity="UNCOMMON"
-       ),
+           id="fantasy_mod:magic_bow"
+           name="Magic Bow"
+           item_group=weapons_tab
+           max_stack_size=1
+       )
        fabricpy.Item(
-           id="fantasy_mod:flame_dagger",
+           id="fantasy_mod:flame_dagger"
            name="Flame Dagger", 
-           item_group=weapons_tab,
-           max_stack_size=1,
-           rarity="RARE"
+           item_group=weapons_tab
+           max_stack_size=1
        )
    ]
 
    # Create magic items for magic tab
    magic_items = [
        fabricpy.Item(
-           id="fantasy_mod:spell_book",
-           name="Spell Book",
-           item_group=magic_tab,
-           max_stack_size=1,
-           rarity="EPIC"
-       ),
+           id="fantasy_mod:spell_book"
+           name="Spell Book"
+           item_group=magic_tab
+           max_stack_size=1
+       )
        fabricpy.FoodItem(
-           id="fantasy_mod:mana_potion",
-           name="Mana Potion",
-           nutrition=0,
-           saturation=0,
-           always_edible=True,
-           item_group=magic_tab,
-           max_stack_size=16,
-           rarity="UNCOMMON"
-       ),
+           id="fantasy_mod:mana_potion"
+           name="Mana Potion"
+           nutrition=0
+           saturation=0
+           always_edible=True
+           item_group=magic_tab
+           max_stack_size=16
+       )
        fabricpy.Item(
-           id="fantasy_mod:crystal_orb",
-           name="Crystal Orb",
-           item_group=magic_tab,
-           max_stack_size=8,
-           rarity="RARE"
+           id="fantasy_mod:crystal_orb"
+           name="Crystal Orb"
+           item_group=magic_tab
+           max_stack_size=8
        )
    ]
 
    # Create materials for materials tab
    materials = [
        fabricpy.Item(
-           id="fantasy_mod:mythril_ingot",
-           name="Mythril Ingot",
+           id="fantasy_mod:mythril_ingot"
+           name="Mythril Ingot"
            item_group=materials_tab
-       ),
+       )
        fabricpy.Item(
-           id="fantasy_mod:dragon_scale",
-           name="Dragon Scale",
-           item_group=materials_tab,
-           max_stack_size=32,
-           rarity="RARE"
-       ),
+           id="fantasy_mod:dragon_scale"
+           name="Dragon Scale"
+           item_group=materials_tab
+           max_stack_size=32
+       )
        fabricpy.Item(
-           id="fantasy_mod:phoenix_feather",
-           name="Phoenix Feather",
-           item_group=materials_tab,
-           max_stack_size=16,
-           rarity="EPIC"
+           id="fantasy_mod:phoenix_feather"
+           name="Phoenix Feather"
+           item_group=materials_tab
+           max_stack_size=16
        )
    ]
 
@@ -325,9 +315,9 @@ By Function
 
    # Organize by what items do
    function_groups = {
-       "tools": fabricpy.ItemGroup(id="mod_tools", name="Mod Tools"),
+       "tools": fabricpy.ItemGroup(id="mod_tools", name="Mod Tools")
        "weapons": fabricpy.ItemGroup(id="mod_weapons", name="Mod Weapons"), 
-       "armor": fabricpy.ItemGroup(id="mod_armor", name="Mod Armor"),
+       "armor": fabricpy.ItemGroup(id="mod_armor", name="Mod Armor")
        "consumables": fabricpy.ItemGroup(id="mod_consumables", name="Consumables")
    }
 
@@ -338,8 +328,8 @@ By Material
 
    # Organize by material type
    material_groups = {
-       "copper": fabricpy.ItemGroup(id="copper_items", name="Copper Items"),
-       "steel": fabricpy.ItemGroup(id="steel_items", name="Steel Items"),
+       "copper": fabricpy.ItemGroup(id="copper_items", name="Copper Items")
+       "steel": fabricpy.ItemGroup(id="steel_items", name="Steel Items")
        "crystal": fabricpy.ItemGroup(id="crystal_items", name="Crystal Items")
    }
 
@@ -350,8 +340,8 @@ By Theme
 
    # Organize by theme/aesthetic
    theme_groups = {
-       "medieval": fabricpy.ItemGroup(id="medieval_items", name="Medieval"),
-       "futuristic": fabricpy.ItemGroup(id="future_items", name="Futuristic"),
+       "medieval": fabricpy.ItemGroup(id="medieval_items", name="Medieval")
+       "futuristic": fabricpy.ItemGroup(id="future_items", name="Futuristic")
        "magical": fabricpy.ItemGroup(id="magic_items", name="Magical")
    }
 
@@ -398,7 +388,7 @@ Single Mod Tab
 
    # Single tab for all mod content
    mod_tab = fabricpy.ItemGroup(
-       id="mymod_items",
+       id="mymod_items"
        name="My Mod"
    )
    # Use your most iconic item as icon

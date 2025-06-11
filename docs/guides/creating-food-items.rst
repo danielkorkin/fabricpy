@@ -35,10 +35,7 @@ Optional Parameters
 * **texture_path**: Path to the item's texture file
 * **recipe**: A RecipeJson object for crafting recipes
 * **max_stack_size**: Maximum stack size (default: 64)
-* **rarity**: Item rarity level
 * **always_edible**: Whether the food can be eaten when hunger is full (default: False)
-* **fast_food**: Whether the food is consumed quickly (default: False)
-* **meat**: Whether the food is considered meat (default: False)
 
 Understanding Food Properties
 -----------------------------
@@ -81,22 +78,20 @@ Special Food Properties
        always_edible=True  # Can eat when full
    )
 
-   # Fast food (consumed quickly)
+   # Quick consumption food
    energy_bar = fabricpy.FoodItem(
        id="mymod:energy_bar", 
        name="Energy Bar",
        nutrition=3,
-       saturation=4.8,
-       fast_food=True  # Quick consumption
+       saturation=4.8
    )
 
-   # Meat food (for wolves, etc.)
+   # High-nutrition food
    cooked_beef = fabricpy.FoodItem(
        id="mymod:premium_beef",
        name="Premium Beef",
        nutrition=8,
-       saturation=12.8,
-       meat=True  # Considered meat
+       saturation=12.8
    )
 
 Advanced Food Examples
@@ -129,8 +124,7 @@ Food with Custom Recipe
        nutrition=4,
        saturation=9.6,
        recipe=recipe,
-       always_edible=True,
-       rarity="RARE"
+       always_edible=True
    )
 
 High-End Food Item
@@ -145,9 +139,7 @@ High-End Food Item
        nutrition=20,         # Full hunger bar
        saturation=30.0,      # Maximum saturation  
        always_edible=True,
-       fast_food=False,      # Normal eating speed
        max_stack_size=16,    # Limited stacking
-       rarity="EPIC",
        texture_path="textures/items/ambrosia.png"
    )
 
@@ -185,15 +177,13 @@ Mid Game Foods
            id="mymod:honey_cake",
            name="Honey Cake",
            nutrition=7,
-           saturation=8.4,
-           rarity="UNCOMMON"
+           saturation=8.4
        ),
        fabricpy.FoodItem(
            id="mymod:roasted_nuts",
            name="Roasted Nuts",
            nutrition=5,
-           saturation=6.0,
-           fast_food=True
+           saturation=6.0
        )
    ]
 
@@ -209,7 +199,6 @@ End Game Foods
            nutrition=12,
            saturation=20.0,
            always_edible=True,
-           rarity="EPIC",
            max_stack_size=4
        )
    ]
@@ -249,7 +238,6 @@ Here's a complete mod with various food items:
            name="Bacon",
            nutrition=4,
            saturation=6.4,
-           meat=True,
            texture_path="textures/items/bacon.png"
        ),
        
@@ -260,7 +248,6 @@ Here's a complete mod with various food items:
            nutrition=2,
            saturation=8.0,
            always_edible=True,
-           fast_food=True,
            max_stack_size=16,
            texture_path="textures/items/energy_drink.png"
        ),
@@ -272,7 +259,6 @@ Here's a complete mod with various food items:
            nutrition=10,
            saturation=16.0,
            always_edible=True,
-           rarity="RARE",
            max_stack_size=1,
            texture_path="textures/items/gourmet_meal.png"
        )
@@ -323,21 +309,12 @@ Best Practices
 2. **Use Appropriate Properties**
    
    * Set ``always_edible=True`` for special/magical foods only
-   * Use ``fast_food=True`` for emergency foods or drinks
-   * Mark ``meat=True`` for animal products
 
 3. **Stack Size Considerations**
    
    * Bowl foods: ``max_stack_size=1``
    * Premium foods: ``max_stack_size=16`` or lower
    * Regular foods: ``max_stack_size=64`` (default)
-
-4. **Rarity Assignment**
-   
-   * Basic foods: ``COMMON``
-   * Crafted foods: ``UNCOMMON``
-   * Special foods: ``RARE``
-   * Magical foods: ``EPIC``
 
 Common Issues
 -------------

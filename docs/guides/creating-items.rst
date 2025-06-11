@@ -28,11 +28,10 @@ Required Parameters
 Optional Parameters
 ~~~~~~~~~~~~~~~~~~~
 
-* **item_group**: The creative tab where the item appears (default: ``fabricpy.item_group.INGREDIENTS``)
+* **item_group**: The creative tab where the item appears (default: ``None``)
 * **texture_path**: Path to the item's texture file
 * **recipe**: A RecipeJson object for crafting recipes
 * **max_stack_size**: Maximum stack size (default: 64)
-* **rarity**: Item rarity level (``COMMON``, ``UNCOMMON``, ``RARE``, ``EPIC``)
 
 Advanced Item Examples
 ----------------------
@@ -48,8 +47,7 @@ Item with Custom Texture
        name="Magic Wand",
        texture_path="textures/items/magic_wand.png",
        item_group=fabricpy.item_group.TOOLS,
-       max_stack_size=1,
-       rarity="RARE"
+       max_stack_size=1
    )
 
 Item with Recipe
@@ -86,13 +84,12 @@ Rare Item
 
 .. code-block:: python
 
-   # Epic rarity item
+   # Legendary gem item
    legendary_gem = fabricpy.Item(
        id="mymod:legendary_gem",
        name="Legendary Gem",
        item_group=fabricpy.item_group.INGREDIENTS,
-       max_stack_size=16,
-       rarity="EPIC"
+       max_stack_size=16
    )
 
 Complete Example
@@ -168,13 +165,6 @@ Best Practices
    * Tools and weapons: ``max_stack_size=1``
    * Building materials: ``max_stack_size=64`` (default)
    * Rare items: ``max_stack_size=16`` or lower
-
-5. **Rarity Levels**
-   
-   * ``COMMON``: Regular items (white text)
-   * ``UNCOMMON``: Special items (yellow text)  
-   * ``RARE``: Valuable items (aqua text)
-   * ``EPIC``: Legendary items (light purple text)
 
 Common Issues
 -------------

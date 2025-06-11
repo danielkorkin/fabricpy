@@ -15,10 +15,9 @@ Core Vanilla Tabs
 
    import fabricpy
 
-   # Building and decoration tabs
+   # Building and resource tabs
    building_blocks = fabricpy.item_group.BUILDING_BLOCKS
-   colored_blocks = fabricpy.item_group.COLORED_BLOCKS  
-   decorations = fabricpy.item_group.DECORATIONS
+   natural = fabricpy.item_group.NATURAL
    functional = fabricpy.item_group.FUNCTIONAL
 
    # Tool and equipment tabs
@@ -26,14 +25,12 @@ Core Vanilla Tabs
    combat = fabricpy.item_group.COMBAT
    
    # Resource tabs
-   natural = fabricpy.item_group.NATURAL
    ingredients = fabricpy.item_group.INGREDIENTS
    
    # Miscellaneous tabs
    food_and_drink = fabricpy.item_group.FOOD_AND_DRINK
    redstone = fabricpy.item_group.REDSTONE
-   transportation = fabricpy.item_group.TRANSPORTATION
-   miscellaneous = fabricpy.item_group.MISCELLANEOUS
+   spawn_eggs = fabricpy.item_group.SPAWN_EGGS
 
 Complete List of Vanilla Groups
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,10 +40,6 @@ Here are all available vanilla item groups and their typical contents:
 **BUILDING_BLOCKS**
   * Stone, wood, concrete, terracotta
   * Structural blocks for construction
-  
-**COLORED_BLOCKS**  
-  * Wool, stained glass, concrete
-  * Decorative blocks with color variants
 
 **NATURAL**
   * Logs, dirt, ores, plants
@@ -56,17 +49,9 @@ Here are all available vanilla item groups and their typical contents:
   * Chests, furnaces, crafting tables
   * Blocks with game mechanics
 
-**DECORATIONS**
-  * Flowers, paintings, item frames
-  * Aesthetic/decorative items
-
 **REDSTONE**
   * Redstone dust, repeaters, pistons
   * Redstone mechanics and components
-
-**TRANSPORTATION**
-  * Minecarts, boats, rails
-  * Movement and travel items
 
 **TOOLS**
   * Pickaxes, shovels, axes, hoes
@@ -84,9 +69,9 @@ Here are all available vanilla item groups and their typical contents:
   * Crafting components, materials
   * Items used to make other items
 
-**MISCELLANEOUS**
-  * Items that don't fit other categories
-  * Spawn eggs, special items
+**SPAWN_EGGS**
+  * Spawn eggs for entities
+  * Entity summoning items
 
 Using Vanilla Item Groups
 -------------------------
@@ -193,7 +178,6 @@ Tools Tab
            name="Magic Shovel",
            item_group=fabricpy.item_group.TOOLS,
            max_stack_size=1,
-           rarity="RARE"
        ),
        
        fabricpy.Item(
@@ -201,7 +185,6 @@ Tools Tab
            name="Multi Tool",
            item_group=fabricpy.item_group.TOOLS,
            max_stack_size=1,
-           rarity="EPIC"
        )
    ]
 
@@ -224,7 +207,6 @@ Combat Tab
            name="Enhanced Crossbow",
            item_group=fabricpy.item_group.COMBAT,
            max_stack_size=1,
-           rarity="UNCOMMON"
        ),
        
        fabricpy.Item(
@@ -232,7 +214,6 @@ Combat Tab
            name="Plate Armor",
            item_group=fabricpy.item_group.COMBAT,
            max_stack_size=1,
-           rarity="RARE"
        )
    ]
 
@@ -266,7 +247,6 @@ Food and Drink Tab
            name="Gourmet Steak", 
            nutrition=8,
            saturation=12.8,
-           meat=True,
            item_group=fabricpy.item_group.FOOD_AND_DRINK
        )
    ]
@@ -288,7 +268,6 @@ Ingredients Tab
            id="mymod:magic_dust",
            name="Magic Dust",
            item_group=fabricpy.item_group.INGREDIENTS,
-           rarity="UNCOMMON"
        ),
        
        fabricpy.Item(
@@ -315,7 +294,6 @@ Functional Tab
            id="mymod:enchanting_altar",
            name="Enchanting Altar",
            item_group=fabricpy.item_group.FUNCTIONAL,
-           light_level=12
        ),
        
        fabricpy.Block(
@@ -336,7 +314,6 @@ Decorations Tab
            id="mymod:crystal_lamp",
            name="Crystal Lamp",
            item_group=fabricpy.item_group.DECORATIONS,
-           light_level=15
        ),
        
        fabricpy.Item(
@@ -377,16 +354,12 @@ Here's a complete mod that uses various vanilla tabs appropriately:
            id="integrated_mod:marble_block",
            name="Marble Block",
            item_group=fabricpy.item_group.BUILDING_BLOCKS,
-           hardness=2.0,
-           resistance=6.0
        ),
        
        fabricpy.Block(
            id="integrated_mod:granite_bricks",
            name="Granite Bricks", 
            item_group=fabricpy.item_group.BUILDING_BLOCKS,
-           hardness=1.5,
-           resistance=6.0
        ),
        
        # Natural resources
@@ -394,9 +367,6 @@ Here's a complete mod that uses various vanilla tabs appropriately:
            id="integrated_mod:tin_ore",
            name="Tin Ore",
            item_group=fabricpy.item_group.NATURAL,
-           hardness=3.0,
-           resistance=3.0,
-           requires_tool=True
        ),
        
        # Crafting ingredients
@@ -449,8 +419,6 @@ Here's a complete mod that uses various vanilla tabs appropriately:
            id="integrated_mod:bronze_furnace", 
            name="Bronze Furnace",
            item_group=fabricpy.item_group.FUNCTIONAL,
-           hardness=3.5,
-           resistance=3.5
        ),
        
        # Decorative items
@@ -458,8 +426,6 @@ Here's a complete mod that uses various vanilla tabs appropriately:
            id="integrated_mod:tin_lantern",
            name="Tin Lantern",
            item_group=fabricpy.item_group.DECORATIONS,
-           light_level=14,
-           hardness=1.0
        )
    ]
 
@@ -467,7 +433,7 @@ Here's a complete mod that uses various vanilla tabs appropriately:
    for item in all_items:
        if hasattr(item, 'nutrition'):  # FoodItem
            mod.registerFoodItem(item)
-       elif hasattr(item, 'hardness'):  # Block  
+       elif hasattr(item, 'block_texture_path'):  # Block  
            mod.registerBlock(item)
        else:  # Item
            mod.registerItem(item)

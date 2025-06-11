@@ -381,7 +381,6 @@ Here's a complete mod with various recipe types:
            name="Magic Wand",
            recipe=recipes["magic_wand"],
            max_stack_size=1,
-           rarity="RARE"
        ),
        
        fabricpy.Item(

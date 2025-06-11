@@ -30,62 +30,9 @@ Optional Parameters
 
 * **item_group**: The creative tab for the BlockItem (default: ``fabricpy.item_group.BUILDING_BLOCKS``)
 * **block_texture_path**: Path to the block's texture file
+* **inventory_texture_path**: Path to the block's inventory item texture file
 * **recipe**: A RecipeJson object for crafting recipes
-* **hardness**: How long the block takes to break (default: 1.5)
-* **resistance**: Explosion resistance (default: 6.0)
-* **requires_tool**: Whether the block requires a tool to drop items (default: False)
-* **light_level**: Light emission level 0-15 (default: 0)
-
-Understanding Block Properties
-------------------------------
-
-Hardness and Resistance
-~~~~~~~~~~~~~~~~~~~~~~~
-
-* **Hardness**: Time to break the block (higher = slower)
-* **Resistance**: Explosion damage resistance (higher = more resistant)
-
-.. code-block:: python
-
-   # Soft block (like dirt)
-   soft_block = fabricpy.Block(
-       id="mymod:soft_clay",
-       name="Soft Clay",
-       hardness=0.5,      # Easy to break
-       resistance=0.5     # Low explosion resistance
-   )
-
-   # Hard block (like obsidian)
-   hard_block = fabricpy.Block(
-       id="mymod:reinforced_steel",
-       name="Reinforced Steel", 
-       hardness=50.0,     # Very hard to break
-       resistance=1200.0, # High explosion resistance
-       requires_tool=True # Must use tool
-   )
-
-Light Emission
-~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   # Glowing block
-   glowstone_block = fabricpy.Block(
-       id="mymod:magic_crystal",
-       name="Magic Crystal",
-       light_level=15,    # Maximum brightness
-       hardness=0.3,
-       resistance=0.3
-   )
-
-   # Dim light block
-   lantern_block = fabricpy.Block(
-       id="mymod:dim_lantern", 
-       name="Dim Lantern",
-       light_level=7,     # Medium brightness
-       hardness=1.0,
-       resistance=1.0
-   )
+* **max_stack_size**: Maximum stack size for the block item (default: 64)
 
 Advanced Block Examples
 -----------------------
@@ -100,9 +47,6 @@ Decorative Block with Custom Texture
        id="mymod:marble",
        name="Marble",
        block_texture_path="textures/blocks/marble.png",
-       hardness=2.0,
-       resistance=6.0,
-       requires_tool=True,
        item_group=fabricpy.item_group.BUILDING_BLOCKS
    )
 
@@ -111,14 +55,11 @@ Ore Block
 
 .. code-block:: python
 
-   # Ore block - harder to break, requires tool
+   # Ore block with custom texture
    ruby_ore = fabricpy.Block(
        id="mymod:ruby_ore",
        name="Ruby Ore",
        block_texture_path="textures/blocks/ruby_ore.png", 
-       hardness=3.0,      # Stone-like hardness
-       resistance=3.0,
-       requires_tool=True, # Must use pickaxe
        item_group=fabricpy.item_group.NATURAL
    )
 
@@ -144,10 +85,7 @@ Storage Block
    ruby_storage = fabricpy.Block(
        id="mymod:ruby_block",
        name="Block of Ruby",
-       recipe=recipe,
-       hardness=5.0,
-       resistance=6.0,
-       requires_tool=True
+       recipe=recipe
    )
 
 Machine Block
@@ -160,10 +98,6 @@ Machine Block
        id="mymod:magic_smelter",
        name="Magic Smelter",
        block_texture_path="textures/blocks/magic_smelter.png",
-       hardness=3.5,
-       resistance=3.5,
-       requires_tool=True,
-       light_level=13,    # Glows when active
        item_group=fabricpy.item_group.FUNCTIONAL
    )
 
@@ -179,15 +113,10 @@ Building Blocks
        fabricpy.Block(
            id="mymod:stone_bricks",
            name="Polished Stone Bricks",
-           hardness=2.0,
-           resistance=6.0,
-           requires_tool=True
        ),
        fabricpy.Block(
            id="mymod:wooden_planks", 
            name="Oak Planks",
-           hardness=2.0,
-           resistance=3.0
        )
    ]
 
@@ -200,16 +129,11 @@ Natural Blocks
        fabricpy.Block(
            id="mymod:crystal_ore",
            name="Crystal Ore",
-           hardness=3.0,
-           resistance=3.0,
-           requires_tool=True,
            item_group=fabricpy.item_group.NATURAL
        ),
        fabricpy.Block(
            id="mymod:mystical_log",
            name="Mystical Log", 
-           hardness=2.0,
-           resistance=2.0,
            item_group=fabricpy.item_group.NATURAL
        )
    ]
@@ -223,16 +147,11 @@ Decorative Blocks
        fabricpy.Block(
            id="mymod:glowing_mushroom",
            name="Glowing Mushroom",
-           light_level=8,
-           hardness=0.0,     # Instant break
-           resistance=0.0,
            item_group=fabricpy.item_group.DECORATIONS
        ),
        fabricpy.Block(
            id="mymod:crystal_glass",
            name="Crystal Glass",
-           hardness=0.3,
-           resistance=0.3,
            item_group=fabricpy.item_group.DECORATIONS
        )
    ]
@@ -246,10 +165,6 @@ Functional Blocks
        fabricpy.Block(
            id="mymod:enchanting_altar",
            name="Enchanting Altar",
-           hardness=5.0,
-           resistance=1200.0,
-           requires_tool=True,
-           light_level=12,
            item_group=fabricpy.item_group.FUNCTIONAL
        )
    ]
@@ -279,9 +194,6 @@ Here's a complete mod with various block types:
            id="blocks_mod:titanium_ore",
            name="Titanium Ore",
            block_texture_path="textures/blocks/titanium_ore.png",
-           hardness=4.0,
-           resistance=4.0,
-           requires_tool=True,
            item_group=fabricpy.item_group.NATURAL
        ),
        
@@ -290,9 +202,6 @@ Here's a complete mod with various block types:
            id="blocks_mod:titanium_block",
            name="Titanium Block",
            block_texture_path="textures/blocks/titanium_block.png",
-           hardness=6.0,
-           resistance=8.0,
-           requires_tool=True,
            item_group=fabricpy.item_group.BUILDING_BLOCKS
        ),
        
@@ -301,9 +210,6 @@ Here's a complete mod with various block types:
            id="blocks_mod:crystal_lamp",
            name="Crystal Lamp",
            block_texture_path="textures/blocks/crystal_lamp.png",
-           light_level=15,
-           hardness=1.0,
-           resistance=1.0,
            item_group=fabricpy.item_group.DECORATIONS
        ),
        
@@ -312,9 +218,6 @@ Here's a complete mod with various block types:
            id="blocks_mod:marble_pillar",
            name="Marble Pillar", 
            block_texture_path="textures/blocks/marble_pillar.png",
-           hardness=2.5,
-           resistance=6.0,
-           requires_tool=True,
            item_group=fabricpy.item_group.BUILDING_BLOCKS
        )
    ]
@@ -355,50 +258,32 @@ Here are recommended property values for different block types:
 **Light Levels**
   * 0: No light
   * 1-7: Dim lighting
-  * 8-11: Medium lighting  
-  * 12-15: Bright lighting
 
 Best Practices
 --------------
 
-1. **Choose Appropriate Hardness**
-   
-   * Match similar vanilla blocks for consistency
-   * Ore blocks: 3.0-5.0 hardness
-   * Building blocks: 1.5-3.0 hardness
-   * Decorative blocks: 0.3-2.0 hardness
-
-2. **Set Tool Requirements**
-   
-   * Stone-like blocks: ``requires_tool=True``
-   * Soft/decorative blocks: ``requires_tool=False``
-   * Always consider mining progression
-
-3. **Light Level Balance**
-   
-   * Don't make too many max brightness (15) blocks
-   * Use medium levels (7-11) for atmosphere
-   * Reserve level 15 for special/rare blocks
-
-4. **Texture Organization**
+1. **Texture Organization**
    
    * Keep block textures in ``textures/blocks/``
    * Use descriptive filenames
    * Maintain 16x16 resolution for vanilla consistency
 
-5. **Creative Tab Assignment**
+2. **Creative Tab Assignment**
    
    * Building materials: ``BUILDING_BLOCKS``
    * Ores and natural: ``NATURAL``
    * Functional items: ``FUNCTIONAL`` 
-   * Decorative items: ``DECORATIONS``
+
+3. **Stack Size Considerations**
+   
+   * Building blocks: ``max_stack_size=64`` (default)
+   * Special blocks: ``max_stack_size=16`` or lower
 
 Common Issues
 -------------
 
 * **Block not appearing**: Ensure block is registered with ``mod.registerBlock()``
 * **Missing texture**: Check block_texture_path and file existence
-* **Wrong mining behavior**: Verify hardness and requires_tool settings
 * **BlockItem missing**: fabricpy automatically creates BlockItems - check creative tab
 
 Next Steps
