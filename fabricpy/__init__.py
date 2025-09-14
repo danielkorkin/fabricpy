@@ -43,7 +43,7 @@ Attributes:
     __all__ (list): List of public API symbols exported by this module.
 """
 
-from . import item_group
+from . import item_group, message
 from .__version__ import __version__
 from .block import Block
 from .fooditem import FoodItem
@@ -60,5 +60,6 @@ __all__ = [
     "ItemGroup",
     "RecipeJson",  # ← expose
     "item_group",
+    "message",
     "__version__",
 ]

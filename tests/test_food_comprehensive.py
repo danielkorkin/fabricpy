@@ -3,9 +3,6 @@ Comprehensive unit tests for FoodItem class covering all food-specific functiona
 """
 
 import unittest
-import tempfile
-import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy.fooditem import FoodItem

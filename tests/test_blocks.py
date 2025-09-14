@@ -3,12 +3,10 @@ Unit tests for the Block class and its components.
 """
 
 import unittest
-import tempfile
-import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy.block import Block
+from fabricpy.message import send_message, send_action_bar_message
 from fabricpy.recipejson import RecipeJson
 from fabricpy import item_group
 
@@ -30,6 +28,8 @@ class TestBlock(unittest.TestCase):
         self.assertIsNone(block.inventory_texture_path)  # default
         self.assertIsNone(block.recipe)  # default
         self.assertIsNone(block.item_group)  # default
+        self.assertIsNone(block.on_left_click())
+        self.assertIsNone(block.on_right_click())
 
     def test_block_creation_full_parameters(self):
         """Test creating a block with all parameters."""
@@ -47,7 +47,7 @@ class TestBlock(unittest.TestCase):
             block_texture_path="textures/blocks/test_block.png",
             inventory_texture_path="textures/items/test_block.png",
             recipe=recipe,
-            item_group=item_group.BUILDING_BLOCKS
+            item_group=item_group.BUILDING_BLOCKS,
         )
         
         self.assertEqual(block.id, "testmod:test_block")
@@ -103,6 +103,52 @@ class TestBlock(unittest.TestCase):
         )
         
         self.assertEqual(block.item_group, custom_group)
+
+    def test_block_event_handler_generation(self):
+        """Ensure event handlers and message helpers are written to Java."""
+        class EventBlock(Block):
+            def __init__(self):
+                super().__init__(id="testmod:event_block", name="Event Block")
+
+            def on_left_click(self):
+                return send_message("left")
+
+            def on_right_click(self):
+                return send_action_bar_message("right")
+
+        block = EventBlock()
+        mod = fabricpy.ModConfig(
+            mod_id="testmod",
+            name="Test Mod",
+            version="1.0.0",
+            description="desc",
+            authors=["Tester"],
+        )
+        mod.registerBlock(block)
+        src = mod._tutorial_blocks_src("com.example.testmod.blocks")
+        self.assertIn("AttackBlockCallback.EVENT.register", src)
+        self.assertIn("UseBlockCallback.EVENT.register", src)
+        self.assertIn("return ActionResult.SUCCESS;", src)
+        self.assertIn('Text.literal("left")', src)
+        self.assertIn('Text.literal("right")', src)
+        self.assertIn('true);', src)
+        self.assertIn("import net.minecraft.text.Text;", src)
+
+    def test_send_message_helper(self):
+        """send_message returns proper Java snippet."""
+        snippet = send_message("Hello")
+        self.assertEqual(
+            snippet,
+            'player.sendMessage(Text.literal("Hello"), false);',
+        )
+
+    def test_send_action_bar_message_helper(self):
+        """send_action_bar_message returns proper Java snippet."""
+        snippet = send_action_bar_message("Hi", player_var="p")
+        self.assertEqual(
+            snippet,
+            'p.sendMessage(Text.literal("Hi"), true);',
+        )
 
     def test_block_edge_cases(self):
         """Test edge cases for block creation."""

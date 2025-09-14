@@ -5,9 +5,8 @@ Simple test to verify Fabric testing integration works.
 import unittest
 import tempfile
 import os
-import shutil
 
-from fabricpy import ModConfig, Item, FoodItem, Block, RecipeJson
+from fabricpy import ModConfig
 
 
 class TestFabricTestingIntegration(unittest.TestCase):

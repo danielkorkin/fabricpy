@@ -8,7 +8,7 @@ import os
 import shutil
 import json
 
-from fabricpy import ModConfig, Item, FoodItem, Block, ItemGroup, RecipeJson
+from fabricpy import ModConfig, Item, FoodItem, Block, RecipeJson
 
 
 class TestFabricCompilationWorkflow(unittest.TestCase):
@@ -83,6 +83,13 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             content = f.read()
             self.assertIn("fabric-loader-junit", content)
             self.assertIn("useJUnitPlatform", content)
+
+        # Verify fabric.mod.json dependency ranges
+        meta_path = os.path.join(mod.project_dir, "src/main/resources/fabric.mod.json")
+        with open(meta_path, 'r') as f:
+            meta = json.load(f)
+            self.assertEqual(meta["depends"]["minecraft"], ">=1.21 <1.22")
+            self.assertEqual(meta["depends"]["fabricloader"], ">=0.16.0")
 
         print("✅ Fabric testing workflow verified!")
 

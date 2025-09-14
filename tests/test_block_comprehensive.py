@@ -3,9 +3,6 @@ Comprehensive unit tests for Block class covering all block-specific functionali
 """
 
 import unittest
-import tempfile
-import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy.block import Block
@@ -30,6 +27,8 @@ class TestBlockComprehensive(unittest.TestCase):
         self.assertIsNone(block.inventory_texture_path)
         self.assertIsNone(block.recipe)
         self.assertIsNone(block.item_group)
+        self.assertIsNone(block.on_left_click())
+        self.assertIsNone(block.on_right_click())
 
     def test_block_texture_system(self):
         """Test the block texture system and fallbacks."""
@@ -128,6 +127,22 @@ class TestBlockComprehensive(unittest.TestCase):
         )
         
         self.assertEqual(glass.recipe, glass_recipe)
+
+    def test_block_with_events(self):
+        """Test blocks with left/right click events."""
+        class EventBlock(Block):
+            def __init__(self):
+                super().__init__(id="test:event", name="Event Block")
+
+            def on_left_click(self):
+                return "player.swingHand(hand);"
+
+            def on_right_click(self):
+                return "player.damage(1);"
+
+        block = EventBlock()
+        self.assertEqual(block.on_left_click(), "player.swingHand(hand);")
+        self.assertEqual(block.on_right_click(), "player.damage(1);")
 
     def test_block_with_item_groups(self):
         """Test blocks with various item groups."""

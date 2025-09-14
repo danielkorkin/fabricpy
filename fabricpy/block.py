@@ -30,6 +30,8 @@ class Block:
         item_group: Creative tab to place this block's item in. Can be an ItemGroup
             instance, a string constant from item_group module, or None.
             Typically BUILDING_BLOCKS for most blocks.
+        left_click_event: Java code to execute when the block is left clicked.
+        right_click_event: Java code to execute when the block is right clicked.
 
     Attributes:
         id (str): The registry identifier for the block.
@@ -39,6 +41,8 @@ class Block:
         inventory_texture_path (str): Path to the block's inventory texture file.
         recipe (RecipeJson): Recipe definition for crafting this block.
         item_group (ItemGroup | str): Creative tab assignment for the block item.
+        left_click_event (str | None): Java code executed on left click.
+        right_click_event (str | None): Java code executed on right click.
 
     Example:
         Creating a basic block::
@@ -84,6 +88,8 @@ class Block:
         inventory_texture_path: str | None = None,
         recipe: object | None = None,  # instance of RecipeJson or None
         item_group: object | str | None = None,
+        left_click_event: str | None = None,
+        right_click_event: str | None = None,
     ):
         """Initialize a new Block instance.
 
@@ -96,6 +102,10 @@ class Block:
                 Falls back to block_texture_path if not provided.
             recipe: Recipe definition for crafting this block.
             item_group: Creative tab to place this block's item in.
+            left_click_event: Java code to execute when the block is left clicked.
+                Prefer overriding :meth:`on_left_click` in a subclass.
+            right_click_event: Java code to execute when the block is right clicked.
+                Prefer overriding :meth:`on_right_click` in a subclass.
         """
         self.id = id
         self.name = name
@@ -105,3 +115,32 @@ class Block:
         self.inventory_texture_path = inventory_texture_path or block_texture_path
         self.recipe = recipe
         self.item_group = item_group
+        self.left_click_event = left_click_event
+        self.right_click_event = right_click_event
+
+    # ------------------------------------------------------------------ #
+    # event hooks                                                        #
+    # ------------------------------------------------------------------ #
+
+    def on_left_click(self) -> str | None:  # noqa: D401
+        """Java code executed when the block is left clicked.
+
+        Subclasses can override this to return a string of Java statements. The
+        default implementation returns the value of ``left_click_event`` passed
+        to the constructor, enabling both declarative and imperative styles.
+        ``ActionResult.SUCCESS`` is automatically returned, so the string should
+        only contain the statements to run when the block is clicked.
+        """
+
+        return self.left_click_event
+
+    def on_right_click(self) -> str | None:  # noqa: D401
+        """Java code executed when the block is right clicked.
+
+        Subclasses can override this to return a string of Java statements. The
+        default implementation returns ``right_click_event`` from the
+        constructor. ``ActionResult.SUCCESS`` is automatically returned, so only
+        the desired statements should be provided.
+        """
+
+        return self.right_click_event

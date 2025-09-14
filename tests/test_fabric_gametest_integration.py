@@ -9,9 +9,7 @@ import unittest
 import tempfile
 import os
 import shutil
-import subprocess
 import json
-from typing import Dict, Any
 
 from fabricpy import ModConfig, Item, FoodItem, Block, ItemGroup, RecipeJson
 
@@ -276,7 +274,7 @@ fabricApi {
     def _create_basic_build_gradle(self, build_gradle_path: str):
         """Create a basic build.gradle file for testing."""
         basic_build_gradle = '''plugins {
-    id 'fabric-loom' version '1.7-SNAPSHOT'
+    id 'fabric-loom' version '1.11-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -628,7 +626,7 @@ public class {class_name} {{
 
         # Add tests for each recipe
         items_with_recipes = [item for item in mod.registered_items if hasattr(item, 'recipe') and item.recipe]
-        blocks_with_recipes = [block for block in mod.registered_blocks if hasattr(block, 'recipe') and block.recipe]
+        [block for block in mod.registered_blocks if hasattr(block, 'recipe') and block.recipe]
 
         for item in items_with_recipes:
             if hasattr(item.recipe, 'data'):

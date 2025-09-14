@@ -5,9 +5,8 @@ These tests verify that the run() and build() methods work correctly
 and properly configure gradle.properties with the required properties.
 """
 
-import pytest
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import tempfile
 import os
 import shutil
@@ -15,8 +14,6 @@ import subprocess
 
 from fabricpy.modconfig import ModConfig
 from fabricpy.item import Item
-from fabricpy.fooditem import FoodItem
-from fabricpy.block import Block
 
 
 class TestRunBuildMethods(unittest.TestCase):
@@ -223,6 +220,7 @@ class TestRunBuildMethods(unittest.TestCase):
         self.assertIn("archives_base_name=test-gradle-props", content)
         self.assertIn("mod_id=test-gradle-props", content)
         self.assertIn("org.gradle.jvmargs=-Xmx1G", content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", content)
         self.assertIn("org.gradle.parallel=true", content)
         self.assertIn("mod_version=1.0.0", content)
         self.assertIn("maven_group=com.example", content)
@@ -271,7 +269,7 @@ class TestRunBuildMethods(unittest.TestCase):
     def test_run_and_build_integration_workflow(self):
         """Test a complete integration workflow: compile -> build -> run."""
         with patch('fabricpy.modconfig.subprocess.check_call') as mock_subprocess, \
-             patch('fabricpy.modconfig.os.chdir') as mock_chdir, \
+             patch('fabricpy.modconfig.os.chdir'), \
              patch('fabricpy.modconfig.os.getcwd', return_value="/original/dir"):
 
             mod_config = ModConfig(

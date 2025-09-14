@@ -33,6 +33,12 @@ Optional Parameters
 * **inventory_texture_path**: Path to the block's inventory item texture file
 * **recipe**: A RecipeJson object for crafting recipes
 * **max_stack_size**: Maximum stack size for the block item (default: 64)
+* Override :py:meth:`fabricpy.block.Block.on_left_click` or
+  :py:meth:`fabricpy.block.Block.on_right_click` in a subclass to run Java code
+  when the block is clicked. Helpers like ``fabricpy.message.send_message`` and
+  ``fabricpy.message.send_action_bar_message`` make it easy to talk with players.
+  The framework appends ``return ActionResult.SUCCESS;`` for you, so your
+  methods should only include the statements to execute.
 
 Advanced Block Examples
 -----------------------
@@ -100,6 +106,28 @@ Machine Block
        block_texture_path="textures/blocks/magic_smelter.png",
        item_group=fabricpy.item_group.FUNCTIONAL
    )
+
+Block with Click Events
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+   # Block reacting to player interactions
+   from fabricpy.message import send_message, send_action_bar_message
+
+   class EventBlock(fabricpy.Block):
+       def __init__(self):
+           super().__init__(id="mymod:event_block", name="Event Block")
+
+       def on_left_click(self):
+           return send_message("left clicked")
+
+       def on_right_click(self):
+           return send_action_bar_message("right clicked")
+
+   event_block = EventBlock()
+
+See :file:`examples/message_block.py` for a runnable example.
 
 Block Categories by Use Case
 ----------------------------

@@ -3,9 +3,6 @@ Unit tests for the Item class and its components.
 """
 
 import unittest
-import tempfile
-import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy.item import Item

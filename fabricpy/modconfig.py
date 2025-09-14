@@ -290,6 +290,11 @@ class ModConfig:
                 "version": self.version,
                 "description": self.description,
                 "authors": self.authors,
+                "depends": {
+                    "fabricloader": ">=0.16.0",
+                    "fabric-api": "*",
+                    "minecraft": ">=1.21 <1.22",
+                },
             },
         )
 
@@ -1120,6 +1125,15 @@ public class CustomItem extends Item {{
             isinstance(getattr(b, "item_group", None), str)
             for b in self.registered_blocks
         )
+        left_handlers = {blk: blk.on_left_click() for blk in self.registered_blocks}
+        right_handlers = {blk: blk.on_right_click() for blk in self.registered_blocks}
+        has_left_click = any(left_handlers.values())
+        has_right_click = any(right_handlers.values())
+        needs_text = any(
+            "Text.literal" in ev
+            for ev in list(left_handlers.values()) + list(right_handlers.values())
+            if ev
+        )
         L: List[str] = []
         L.append(f"package {pkg};\n")
         L.append("import net.minecraft.block.Block;")
@@ -1132,9 +1146,17 @@ public class CustomItem extends Item {{
         L.append("import net.minecraft.registry.RegistryKey;")
         L.append("import net.minecraft.registry.RegistryKeys;")
         L.append("import net.minecraft.registry.Registries;")
+        if needs_text:
+            L.append("import net.minecraft.text.Text;")
         if has_vanila:
             L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
             L.append("import net.minecraft.item.ItemGroups;")
+        if has_left_click:
+            L.append("import net.fabricmc.fabric.api.event.player.AttackBlockCallback;")
+        if has_right_click:
+            L.append("import net.fabricmc.fabric.api.event.player.UseBlockCallback;")
+        if has_left_click or has_right_click:
+            L.append("import net.minecraft.util.ActionResult;")
         L.append("import java.util.function.Function;\n")
         L.append("public final class TutorialBlocks {")
         L.append("    private TutorialBlocks() {}\n")
@@ -1181,6 +1203,34 @@ public class CustomItem extends Item {{
                 for c in consts:
                     L.append(f"            e.add({c}.asItem());")
                 L.append("        });")
+        if has_left_click:
+            L.append("        AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {")
+            for blk, code in left_handlers.items():
+                if code:
+                    const = self._to_java_constant(blk.id)
+                    L.append(
+                        f"            if (world.getBlockState(pos).getBlock() == {const}) {{",
+                    )
+                    for line in code.splitlines():
+                        L.append(f"                {line}")
+                    L.append("                return ActionResult.SUCCESS;")
+                    L.append("            }")
+            L.append("            return ActionResult.PASS;")
+            L.append("        });")
+        if has_right_click:
+            L.append("        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {")
+            for blk, code in right_handlers.items():
+                if code:
+                    const = self._to_java_constant(blk.id)
+                    L.append(
+                        f"            if (world.getBlockState(hitResult.getBlockPos()).getBlock() == {const}) {{",
+                    )
+                    for line in code.splitlines():
+                        L.append(f"                {line}")
+                    L.append("                return ActionResult.SUCCESS;")
+                    L.append("            }")
+            L.append("            return ActionResult.PASS;")
+            L.append("        });")
         L.append("    }")
         L.append("}")
         return "\n".join(L)
@@ -1549,6 +1599,7 @@ org.gradle.parallel=true
 minecraft_version=1.21.5
 yarn_mappings=1.21.5+build.1
 loader_version=0.16.10
+loom_version=1.11-SNAPSHOT
 
 # Mod Properties
 mod_version={self.version}

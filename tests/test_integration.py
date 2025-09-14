@@ -6,7 +6,6 @@ import unittest
 import tempfile
 import shutil
 import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy import ModConfig, Item, FoodItem, Block, ItemGroup, RecipeJson, item_group
@@ -442,8 +441,8 @@ class TestFabricPyIntegration(unittest.TestCase):
         item = fabricpy.Item(id="import_test:item", name="Import Item")
         food = fabricpy.FoodItem(id="import_test:food", name="Import Food", nutrition=1, saturation=0.1)
         block = fabricpy.Block(id="import_test:block", name="Import Block")
-        group = fabricpy.ItemGroup(id="import_group", name="Import Group")
-        recipe = fabricpy.RecipeJson({"type": "minecraft:crafting_shaped", "pattern": ["#"], "key": {"#": "minecraft:stone"}, "result": {"id": "import_test:item", "count": 1}})
+        fabricpy.ItemGroup(id="import_group", name="Import Group")
+        fabricpy.RecipeJson({"type": "minecraft:crafting_shaped", "pattern": ["#"], "key": {"#": "minecraft:stone"}, "result": {"id": "import_test:item", "count": 1}})
         
         # Test vanilla group access
         self.assertEqual(fabricpy.item_group.TOOLS, "TOOLS")

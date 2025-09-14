@@ -3,20 +3,13 @@ Advanced integration tests for fabricpy library testing complete workflows.
 """
 
 import unittest
-import tempfile
-import os
-import json
-import shutil
-from unittest.mock import Mock, patch, MagicMock
 
-import fabricpy
 from fabricpy.item import Item
 from fabricpy.fooditem import FoodItem
 from fabricpy.block import Block
 from fabricpy.itemgroup import ItemGroup
 from fabricpy.recipejson import RecipeJson
 from fabricpy.modconfig import ModConfig
-from fabricpy import item_group
 
 
 class TestCompleteModWorkflows(unittest.TestCase):

@@ -482,6 +482,7 @@ class TestModConfig(unittest.TestCase):
         self.assertIn("minecraft_version=1.21.5", content)
         self.assertIn("yarn_mappings=1.21.5+build.1", content)
         self.assertIn("loader_version=0.16.10", content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", content)
         self.assertIn("# Mod Properties", content)
         self.assertIn("mod_version=1.0.0", content)
         self.assertIn("maven_group=com.example", content)
@@ -584,6 +585,7 @@ class TestModConfig(unittest.TestCase):
         self.assertIn("minecraft_version=1.21.5", content)
         self.assertIn("yarn_mappings=1.21.5+build.1", content)
         self.assertIn("loader_version=0.16.10", content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", content)
         self.assertIn("# Mod Properties", content)
         self.assertIn("mod_version=1.5.0", content)  # Uses the ModConfig version
         self.assertIn("maven_group=com.example", content)
@@ -701,6 +703,9 @@ org.gradle.parallel=false
         self.assertIn("org.gradle.parallel=true", final_content)
         self.assertIn("# Fabric Properties", final_content)
         self.assertIn("minecraft_version=1.21.5", final_content)
+        self.assertIn("yarn_mappings=1.21.5+build.1", final_content)
+        self.assertIn("loader_version=0.16.10", final_content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", final_content)
         self.assertIn("# Mod Properties", final_content)
         self.assertIn("mod_version=2.1.0", final_content)  # Uses ModConfig version
         self.assertIn("maven_group=com.example", final_content)
@@ -740,6 +745,7 @@ org.gradle.parallel=false
         self.assertIn("archives_base_name=no-file-test", content)
         self.assertIn("mod_id=no-file-test", content)
         self.assertIn("mod_version=1.0.0", content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", content)
 
     def test_ensure_gradle_properties_empty_file(self):
         """Test _ensure_gradle_properties with empty gradle.properties."""
@@ -772,6 +778,7 @@ org.gradle.parallel=false
         self.assertIn("mod_version=1.0.0", content)
         self.assertIn("maven_group=com.example", content)
         self.assertIn("minecraft_version=1.21.5", content)
+        self.assertIn("loom_version=1.11-SNAPSHOT", content)
 
 
 class TestModConfigIntegration(unittest.TestCase):

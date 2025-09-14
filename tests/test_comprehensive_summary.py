@@ -180,7 +180,7 @@ class TestComprehensiveTestingSummary(unittest.TestCase):
         # Verify server and client test files
         gametest_base = os.path.join(gametest_dir, "com/example/comprehensivetestingdemo")
         server_test = os.path.join(gametest_base, "ComprehensivetestingdemoServerTest.java")
-        client_test = os.path.join(gametest_base, "ComprehensivetestingdemoClientTest.java")
+        os.path.join(gametest_base, "ComprehensivetestingdemoClientTest.java")
 
         if os.path.exists(server_test):
             with open(server_test, 'r') as f:

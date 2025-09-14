@@ -3,19 +3,14 @@ Comprehensive error handling and edge case tests for fabricpy library.
 """
 
 import unittest
-import tempfile
-import os
 import json
-from unittest.mock import Mock, patch, MagicMock
 
-import fabricpy
 from fabricpy.item import Item
 from fabricpy.fooditem import FoodItem
 from fabricpy.block import Block
 from fabricpy.itemgroup import ItemGroup
 from fabricpy.recipejson import RecipeJson
 from fabricpy.modconfig import ModConfig
-from fabricpy import item_group
 
 
 class TestItemErrorHandling(unittest.TestCase):
@@ -196,13 +191,13 @@ class TestRecipeErrorHandling(unittest.TestCase):
     def test_recipe_empty_json(self):
         """Test recipe with empty JSON."""
         with self.assertRaises(ValueError):
-            recipe = RecipeJson({})
+            RecipeJson({})
 
     def test_recipe_missing_required_fields(self):
         """Test recipe missing required fields."""
         # Missing type
         with self.assertRaises(ValueError):
-            recipe1 = RecipeJson({
+            RecipeJson({
                 "pattern": ["#"],
                 "key": {"#": "minecraft:stone"},
                 "result": {"id": "test:item", "count": 1}
@@ -315,7 +310,7 @@ class TestModConfigErrorHandling(unittest.TestCase):
         """Test ModConfig with invalid author formats."""
         # Single string author - should fail due to missing required parameters
         with self.assertRaises(TypeError):
-            mod1 = ModConfig(mod_id="test", name="Test", authors="Single Author")
+            ModConfig(mod_id="test", name="Test", authors="Single Author")
         
         # Create a proper mod for testing author validation
         mod2 = ModConfig(

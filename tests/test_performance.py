@@ -5,9 +5,6 @@ Performance and stress tests for fabricpy library.
 import unittest
 import time
 import gc
-import tempfile
-import os
-from unittest.mock import Mock, patch
 
 import fabricpy
 from fabricpy.item import Item
