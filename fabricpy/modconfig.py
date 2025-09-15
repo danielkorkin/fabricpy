@@ -742,13 +742,12 @@ public class CustomItem extends Item {{
 
 import net.minecraft.block.BlockState;
 import net.minecraft.component.type.AttributeModifiersComponent;
-import net.minecraft.entity.attribute.AttributeModifierSlot;
+import net.minecraft.component.type.AttributeModifierSlot;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.recipe.Ingredient;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
@@ -760,17 +759,16 @@ public class CustomToolItem extends Item {{
     public CustomToolItem(int durability, float miningSpeedMultiplier, float attackDamage,
             int miningLevel, int enchantability, String repairIngredientId,
             int maxCount, Settings settings) {{
-        super(settings.maxCount(maxCount)
+        super((repairIngredientId == null ? settings
+                : settings.repairable(Registries.ITEM.get(Identifier.of(repairIngredientId))))
+                .maxCount(maxCount)
                 .maxDamage(durability)
-                .enchantability(enchantability)
-                .repairIngredient(repairIngredientId == null ? Ingredient.ofItems()
-                        : Ingredient.ofItems(Registries.ITEM.get(Identifier.of(repairIngredientId))))
+                .enchantable(enchantability)
                 .attributeModifiers(AttributeModifiersComponent.builder()
                         .add(EntityAttributes.ATTACK_DAMAGE,
                                 new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, attackDamage, EntityAttributeModifier.Operation.ADD_VALUE),
                                 AttributeModifierSlot.MAINHAND)
-                        .build())
-        );
+                        .build()));
         this.miningSpeedMultiplier = miningSpeedMultiplier;
         this.miningLevel = miningLevel;
     }}

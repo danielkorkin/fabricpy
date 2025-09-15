@@ -923,9 +923,10 @@ class TestModConfigIntegration(unittest.TestCase):
         with open(custom_path, "r", encoding="utf-8") as fh:
             custom_content = fh.read()
 
-        self.assertIn("Ingredient.ofItems()", custom_content)
+        self.assertIn("settings.repairable(Registries.ITEM.get(Identifier.of(repairIngredientId)))", custom_content)
         self.assertIn("EntityAttributes.ATTACK_DAMAGE", custom_content)
         self.assertIn("Operation.ADD_VALUE", custom_content)
+        self.assertIn("AttributeModifierSlot.MAINHAND", custom_content)
 
     def test_multiple_items_same_group(self):
         """Test multiple items in the same custom group."""
