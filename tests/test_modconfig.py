@@ -907,21 +907,25 @@ class TestModConfigIntegration(unittest.TestCase):
             content,
         )
 
-        self.assertTrue(
-            os.path.exists(
-                os.path.join(
-                    self.project_dir,
-                    "src",
-                    "main",
-                    "java",
-                    "com",
-                    "example",
-                    "tools",
-                    "items",
-                    "CustomToolItem.java",
-                )
-            )
+        custom_path = os.path.join(
+            self.project_dir,
+            "src",
+            "main",
+            "java",
+            "com",
+            "example",
+            "tools",
+            "items",
+            "CustomToolItem.java",
         )
+        self.assertTrue(os.path.exists(custom_path))
+
+        with open(custom_path, "r", encoding="utf-8") as fh:
+            custom_content = fh.read()
+
+        self.assertIn("Ingredient.EMPTY", custom_content)
+        self.assertIn("EntityAttributes.ATTACK_DAMAGE", custom_content)
+        self.assertIn("Operation.ADD_VALUE", custom_content)
 
     def test_multiple_items_same_group(self):
         """Test multiple items in the same custom group."""

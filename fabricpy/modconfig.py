@@ -752,8 +752,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
+import java.util.UUID;
 
 public class CustomToolItem extends Item {{
+    private static final UUID ATTACK_DAMAGE_MODIFIER_ID = UUID.fromString("fa233e1c-4180-4865-b01b-bcde54c9e5ad");
     private final float miningSpeedMultiplier;
     private final float attackDamage;
     private final int miningLevel;
@@ -769,12 +771,12 @@ public class CustomToolItem extends Item {{
         this.attackDamage = attackDamage;
         this.miningLevel = miningLevel;
         this.enchantability = enchantability;
-        this.repairIngredient = repairIngredientId == null ? Ingredient.empty()
+        this.repairIngredient = repairIngredientId == null ? Ingredient.EMPTY
                 : Ingredient.ofItems(Registries.ITEM.get(Identifier.of(repairIngredientId)));
         ImmutableMultimap.Builder<EntityAttribute, EntityAttributeModifier> builder = ImmutableMultimap.builder();
-        builder.put(EntityAttributes.GENERIC_ATTACK_DAMAGE,
+        builder.put(EntityAttributes.ATTACK_DAMAGE,
                 new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, \"Tool modifier\",
-                        attackDamage, EntityAttributeModifier.Operation.ADDITION));
+                        attackDamage, EntityAttributeModifier.Operation.ADD_VALUE));
         this.attributeModifiers = builder.build();
     }}
 
@@ -795,9 +797,9 @@ public class CustomToolItem extends Item {{
 
     @Override
     public Multimap<EntityAttribute, EntityAttributeModifier> getAttributeModifiers(
-            EquipmentSlot slot, ItemStack stack) {{
+            ItemStack stack, EquipmentSlot slot) {{
         return slot == EquipmentSlot.MAINHAND ? this.attributeModifiers
-                : super.getAttributeModifiers(slot, stack);
+                : super.getAttributeModifiers(stack, slot);
     }}
 }}
 """
