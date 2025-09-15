@@ -31,6 +31,7 @@ from typing import Dict, List, Set
 from .fooditem import FoodItem
 from .itemgroup import ItemGroup
 from .recipejson import RecipeJson
+from .toolitem import ToolItem
 
 
 # --------------------------------------------------------------------- #
@@ -566,6 +567,13 @@ class ModConfig:
         ) as fh:
             fh.write(self._custom_item_src(package_path))
 
+        # Generate CustomToolItem.java if any ToolItem is registered
+        if any(isinstance(i, ToolItem) for i in self.registered_items):
+            with open(
+                os.path.join(pkg_dir, "CustomToolItem.java"), "w", encoding="utf-8"
+            ) as fh:
+                fh.write(self._custom_tool_item_src(package_path))
+
     def _tutorial_items_src(self, pkg: str) -> str:
         """Generate Java source code for the TutorialItems class.
 
@@ -588,6 +596,7 @@ class ModConfig:
                 )
         """
         has_food = any(isinstance(i, FoodItem) for i in self.registered_items)
+        has_tool = any(isinstance(i, ToolItem) for i in self.registered_items)
         has_vanila = any(
             isinstance(getattr(i, "item_group", None), str)
             for i in self.registered_items
@@ -603,6 +612,8 @@ class ModConfig:
         L.append("import net.minecraft.registry.RegistryKey;")
         L.append("import net.minecraft.registry.RegistryKeys;")
         L.append("import net.minecraft.registry.Registries;")
+        if has_tool:
+            L.append(f"import {pkg}.CustomToolItem;")
         if has_vanila:
             L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
             L.append("import net.minecraft.item.ItemGroups;")
@@ -625,6 +636,19 @@ class ModConfig:
                     f".maxCount({itm.max_stack_size})"
                 )
                 factory = "Item::new"
+            elif isinstance(itm, ToolItem):
+                settings = "new Item.Settings()"
+                repair = (
+                    "null"
+                    if itm.repair_ingredient is None
+                    else f'"{itm.repair_ingredient}"'
+                )
+                factory = (
+                    "s -> new CustomToolItem("
+                    f"{itm.durability}, {itm.mining_speed_multiplier}f, "
+                    f"{itm.attack_damage}f, {itm.mining_level}, {itm.enchantability}, "
+                    f"{repair}, {itm.max_stack_size}, s)"
+                )
             else:
                 settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
                 factory = "CustomItem::new"
@@ -697,6 +721,61 @@ public class CustomItem extends Item {{
                     SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.PLAYERS, 1F, 1F);
         }}
         return ActionResult.SUCCESS;
+    }}
+}}
+"""
+
+    def _custom_tool_item_src(self, pkg: str) -> str:
+        """Generate Java source code for the CustomToolItem class.
+
+        The generated class exposes tool-specific properties like durability,
+        mining speed, attack damage, enchantability and repair handling.
+
+        Args:
+            pkg (str): The Java package name for the generated class.
+
+        Returns:
+            str: Complete Java source for the CustomToolItem class.
+        """
+
+        return f"""package {pkg};
+
+import net.minecraft.block.BlockState;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.AttributeModifierSlot;
+import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.registry.Registries;
+import net.minecraft.util.Identifier;
+
+public class CustomToolItem extends Item {{
+    private static final Identifier ATTACK_DAMAGE_MODIFIER_ID = Identifier.of("fabricpy", "tool_damage");
+    private final float miningSpeedMultiplier;
+    private final int miningLevel;
+
+    public CustomToolItem(int durability, float miningSpeedMultiplier, float attackDamage,
+            int miningLevel, int enchantability, String repairIngredientId,
+            int maxCount, Settings settings) {{
+        super((repairIngredientId == null ? settings
+                : settings.repairable(Registries.ITEM.get(Identifier.of(repairIngredientId))))
+                .maxCount(maxCount)
+                .maxDamage(durability)
+                .enchantable(enchantability)
+                .attributeModifiers(AttributeModifiersComponent.builder()
+                        .add(EntityAttributes.ATTACK_DAMAGE,
+                                new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, attackDamage, EntityAttributeModifier.Operation.ADD_VALUE),
+                                AttributeModifierSlot.MAINHAND)
+                        .build()));
+        this.miningSpeedMultiplier = miningSpeedMultiplier;
+        this.miningLevel = miningLevel;
+    }}
+
+    @Override
+    public float getMiningSpeed(ItemStack stack, BlockState state) {{
+        return this.miningSpeedMultiplier;
     }}
 }}
 """

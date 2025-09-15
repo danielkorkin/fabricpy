@@ -7,6 +7,7 @@ import unittest
 import fabricpy
 from fabricpy.item import Item
 from fabricpy.fooditem import FoodItem
+from fabricpy.toolitem import ToolItem
 from fabricpy.recipejson import RecipeJson
 from fabricpy import item_group
 
@@ -184,6 +185,68 @@ class TestFoodItem(unittest.TestCase):
         
         self.assertEqual(bread.recipe, recipe)
         self.assertEqual(bread.nutrition, 5)
+
+
+class TestToolItem(unittest.TestCase):
+    """Test the ToolItem class."""
+
+    def test_tool_item_creation_basic(self):
+        """Test creating a basic tool item."""
+        tool = ToolItem(
+            id="testmod:basic_tool",
+            name="Basic Tool",
+            durability=250,
+        )
+
+        self.assertEqual(tool.id, "testmod:basic_tool")
+        self.assertEqual(tool.name, "Basic Tool")
+        self.assertEqual(tool.max_stack_size, 1)
+        self.assertEqual(tool.durability, 250)
+        self.assertEqual(tool.mining_speed_multiplier, 1.0)
+        self.assertEqual(tool.attack_damage, 1.0)
+        self.assertEqual(tool.mining_level, 0)
+        self.assertEqual(tool.enchantability, 0)
+        self.assertIsNone(tool.repair_ingredient)
+
+    def test_tool_item_inheritance(self):
+        """Test that ToolItem properly inherits from Item."""
+        tool = ToolItem(
+            id="testmod:advanced_tool",
+            name="Advanced Tool",
+            max_stack_size=1,
+            texture_path="textures/items/adv_tool.png",
+            durability=500,
+            mining_speed_multiplier=8.0,
+            attack_damage=3.0,
+            mining_level=2,
+            enchantability=15,
+            repair_ingredient="minecraft:iron_ingot",
+            item_group=item_group.TOOLS,
+        )
+
+        # Test Item properties
+        self.assertEqual(tool.max_stack_size, 1)
+        self.assertEqual(tool.texture_path, "textures/items/adv_tool.png")
+        self.assertEqual(tool.item_group, item_group.TOOLS)
+
+        # Test ToolItem specific properties
+        self.assertEqual(tool.durability, 500)
+        self.assertEqual(tool.mining_speed_multiplier, 8.0)
+        self.assertEqual(tool.attack_damage, 3.0)
+        self.assertEqual(tool.mining_level, 2)
+        self.assertEqual(tool.enchantability, 15)
+        self.assertEqual(tool.repair_ingredient, "minecraft:iron_ingot")
+
+    def test_tool_item_default_values(self):
+        """ToolItem defaults to tool-specific settings."""
+        tool = ToolItem()
+        self.assertEqual(tool.max_stack_size, 1)
+        self.assertEqual(tool.durability, 0)
+        self.assertEqual(tool.mining_speed_multiplier, 1.0)
+        self.assertEqual(tool.attack_damage, 1.0)
+        self.assertEqual(tool.mining_level, 0)
+        self.assertEqual(tool.enchantability, 0)
+        self.assertIsNone(tool.repair_ingredient)
 
 
 if __name__ == '__main__':

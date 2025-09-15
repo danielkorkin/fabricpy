@@ -38,6 +38,14 @@ fabricpy.block module
    :show-inheritance:
    :undoc-members:
 
+fabricpy.toolitem module
+------------------------
+
+.. automodule:: fabricpy.toolitem
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 fabricpy.itemgroup module
 -------------------------
 

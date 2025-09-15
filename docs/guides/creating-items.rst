@@ -19,6 +19,28 @@ Here's how to create a simple item:
        item_group=fabricpy.item_group.INGREDIENTS
    )
 
+Tool Item Creation
+------------------
+
+To create tools with durability, mining speed, and combat attributes,
+use the :class:`fabricpy.ToolItem` class:
+
+.. code-block:: python
+
+   pickaxe = fabricpy.ToolItem(
+       id="mymod:obsidian_pickaxe",
+       name="Obsidian Pickaxe",
+       durability=500,
+       mining_speed_multiplier=8.0,
+       attack_damage=3.0,
+       mining_level=2,
+       enchantability=15,
+       repair_ingredient="minecraft:obsidian",
+       item_group=fabricpy.item_group.TOOLS,
+   )
+
+See ``examples/tool_item.py`` for a complete ToolItem example.
+
 Required Parameters
 ~~~~~~~~~~~~~~~~~~~
 
