@@ -923,7 +923,7 @@ class TestModConfigIntegration(unittest.TestCase):
         with open(custom_path, "r", encoding="utf-8") as fh:
             custom_content = fh.read()
 
-        self.assertIn("Ingredient.EMPTY", custom_content)
+        self.assertIn("Ingredient.ofItems()", custom_content)
         self.assertIn("EntityAttributes.ATTACK_DAMAGE", custom_content)
         self.assertIn("Operation.ADD_VALUE", custom_content)
 

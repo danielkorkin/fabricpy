@@ -740,10 +740,9 @@ public class CustomItem extends Item {{
 
         return f"""package {pkg};
 
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
 import net.minecraft.block.BlockState;
-import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.entity.attribute.AttributeModifierSlot;
 import net.minecraft.entity.attribute.EntityAttribute;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
@@ -752,54 +751,33 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
-import java.util.UUID;
 
 public class CustomToolItem extends Item {{
-    private static final UUID ATTACK_DAMAGE_MODIFIER_ID = UUID.fromString("fa233e1c-4180-4865-b01b-bcde54c9e5ad");
+    private static final Identifier ATTACK_DAMAGE_MODIFIER_ID = Identifier.of("fabricpy", "tool_damage");
     private final float miningSpeedMultiplier;
-    private final float attackDamage;
     private final int miningLevel;
-    private final int enchantability;
-    private final Ingredient repairIngredient;
-    private final Multimap<EntityAttribute, EntityAttributeModifier> attributeModifiers;
 
     public CustomToolItem(int durability, float miningSpeedMultiplier, float attackDamage,
             int miningLevel, int enchantability, String repairIngredientId,
             int maxCount, Settings settings) {{
-        super(settings.maxCount(maxCount).maxDamage(durability));
+        super(settings.maxCount(maxCount)
+                .maxDamage(durability)
+                .enchantability(enchantability)
+                .repairIngredient(repairIngredientId == null ? Ingredient.ofItems()
+                        : Ingredient.ofItems(Registries.ITEM.get(Identifier.of(repairIngredientId))))
+                .attributeModifiers(AttributeModifiersComponent.builder()
+                        .add(EntityAttributes.ATTACK_DAMAGE,
+                                new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, attackDamage, EntityAttributeModifier.Operation.ADD_VALUE),
+                                AttributeModifierSlot.MAINHAND)
+                        .build())
+        );
         this.miningSpeedMultiplier = miningSpeedMultiplier;
-        this.attackDamage = attackDamage;
         this.miningLevel = miningLevel;
-        this.enchantability = enchantability;
-        this.repairIngredient = repairIngredientId == null ? Ingredient.EMPTY
-                : Ingredient.ofItems(Registries.ITEM.get(Identifier.of(repairIngredientId)));
-        ImmutableMultimap.Builder<EntityAttribute, EntityAttributeModifier> builder = ImmutableMultimap.builder();
-        builder.put(EntityAttributes.ATTACK_DAMAGE,
-                new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, \"Tool modifier\",
-                        attackDamage, EntityAttributeModifier.Operation.ADD_VALUE));
-        this.attributeModifiers = builder.build();
     }}
 
     @Override
-    public float getMiningSpeedMultiplier(ItemStack stack, BlockState state) {{
+    public float getMiningSpeed(ItemStack stack, BlockState state) {{
         return this.miningSpeedMultiplier;
-    }}
-
-    @Override
-    public int getEnchantability() {{
-        return this.enchantability;
-    }}
-
-    @Override
-    public boolean canRepair(ItemStack stack, ItemStack ingredient) {{
-        return this.repairIngredient.test(ingredient);
-    }}
-
-    @Override
-    public Multimap<EntityAttribute, EntityAttributeModifier> getAttributeModifiers(
-            ItemStack stack, EquipmentSlot slot) {{
-        return slot == EquipmentSlot.MAINHAND ? this.attributeModifiers
-                : super.getAttributeModifiers(stack, slot);
     }}
 }}
 """
