@@ -7,7 +7,7 @@ This directory contains comprehensive unit tests for the fabricpy library, ensur
 The test suite is organized into the following modules:
 
 ### Core Component Tests
-- **`test_items.py`** - Tests for the `Item` and `FoodItem` classes
+- **`test_items.py`** - Tests for the `Item`, `FoodItem`, and `ToolItem` classes
 - **`test_blocks.py`** - Tests for the `Block` class
 - **`test_recipe.py`** - Tests for the `RecipeJson` class
 - **`test_itemgroup.py`** - Tests for the `ItemGroup` class

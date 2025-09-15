@@ -6,7 +6,7 @@ Python Library that allows you to create Fabric Minecraft mods in Python! Write 
 
 ## Features
 
-✨ **Easy Mod Creation**: Define items, blocks, and food with simple Python classes  
+✨ **Easy Mod Creation**: Define items, tools, blocks, and food with simple Python classes
 🔧 **Full Fabric Integration**: Generates complete mod projects compatible with Fabric Loader  
 🧪 **Built-in Testing**: Automatically generates unit tests and game tests  
 🎨 **Custom Creative Tabs**: Create your own creative inventory tabs  
@@ -71,6 +71,19 @@ item = fabricpy.Item(
 )
 mod.registerItem(item)
 
+# Create a tool
+pickaxe = fabricpy.ToolItem(
+    id="mymod:ruby_pickaxe",
+    name="Ruby Pickaxe",
+    durability=500,
+    mining_speed_multiplier=8.0,
+    attack_damage=3.0,
+    mining_level=2,
+    enchantability=22,
+    repair_ingredient="minecraft:ruby"
+)
+mod.registerItem(pickaxe)
+
 # Create a food item
 apple = fabricpy.FoodItem(
     id="mymod:golden_apple",
@@ -93,6 +106,11 @@ mod.registerBlock(block)
 mod.compile()
 mod.run()
 ```
+
+## Examples
+
+Additional example scripts can be found in the [`examples`](examples/) directory.
+- `tool_item.py` demonstrates defining and registering a custom `ToolItem`.
 
 ## Advanced Features
 

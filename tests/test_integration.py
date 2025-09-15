@@ -8,7 +8,7 @@ import shutil
 import os
 
 import fabricpy
-from fabricpy import ModConfig, Item, FoodItem, Block, ItemGroup, RecipeJson, item_group
+from fabricpy import ModConfig, Item, FoodItem, Block, ItemGroup, RecipeJson, ToolItem, item_group
 
 
 class TestFabricPyIntegration(unittest.TestCase):
@@ -70,12 +70,18 @@ class TestFabricPyIntegration(unittest.TestCase):
             }
         })
         
-        advanced_tool = Item(
+        advanced_tool = ToolItem(
             id="integration_test:advanced_tool",
             name="Advanced Integration Tool",
             max_stack_size=1,
             recipe=advanced_recipe,
-            item_group=tools_group
+            item_group=tools_group,
+            durability=500,
+            mining_speed_multiplier=8.0,
+            attack_damage=3.0,
+            mining_level=2,
+            enchantability=15,
+            repair_ingredient="minecraft:diamond",
         )
         
         # Food item with complex properties
@@ -424,6 +430,7 @@ class TestFabricPyIntegration(unittest.TestCase):
         self.assertTrue(hasattr(fabricpy, 'ModConfig'))
         self.assertTrue(hasattr(fabricpy, 'Item'))
         self.assertTrue(hasattr(fabricpy, 'FoodItem'))
+        self.assertTrue(hasattr(fabricpy, 'ToolItem'))
         self.assertTrue(hasattr(fabricpy, 'Block'))
         self.assertTrue(hasattr(fabricpy, 'ItemGroup'))
         self.assertTrue(hasattr(fabricpy, 'RecipeJson'))

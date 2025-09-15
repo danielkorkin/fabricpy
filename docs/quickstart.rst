@@ -72,6 +72,19 @@ Here's a complete example of creating a simple mod:
        item_group=fabricpy.item_group.INGREDIENTS
    )
 
+   # Create a tool item
+   ruby_pickaxe = fabricpy.ToolItem(
+       id="tutorial_mod:ruby_pickaxe",
+       name="Ruby Pickaxe",
+       durability=500,
+       mining_speed_multiplier=8.0,
+       attack_damage=3.0,
+       mining_level=2,
+       enchantability=22,
+       repair_ingredient="tutorial_mod:ruby",
+       item_group=fabricpy.item_group.TOOLS,
+   )
+
    # Create a food item
    ruby_apple = fabricpy.FoodItem(
        id="tutorial_mod:ruby_apple",
@@ -90,6 +103,7 @@ Here's a complete example of creating a simple mod:
 
    # Register all items and blocks
    mod.registerItem(ruby)
+   mod.registerItem(ruby_pickaxe)
    mod.registerFoodItem(ruby_apple)
    mod.registerBlock(ruby_block)
 
@@ -104,3 +118,12 @@ Next Steps
 - Use the `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ to easily create crafting recipe JSON files with a visual interface
 - Understand custom creative tabs (see the ItemGroup class in the API reference)
 - Explore the :doc:`complete API reference <api>`
+
+Examples
+--------
+
+Example scripts can be found in the ``examples`` directory.
+
+.. literalinclude:: ../examples/tool_item.py
+   :caption: Defining a custom ToolItem
+   :language: python

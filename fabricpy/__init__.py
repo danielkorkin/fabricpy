@@ -48,6 +48,7 @@ from .__version__ import __version__
 from .block import Block
 from .fooditem import FoodItem
 from .item import Item
+from .toolitem import ToolItem
 from .itemgroup import ItemGroup
 from .modconfig import ModConfig
 from .recipejson import RecipeJson  # ← NEW import
@@ -56,6 +57,7 @@ __all__ = [
     "ModConfig",
     "Item",
     "FoodItem",
+    "ToolItem",
     "Block",
     "ItemGroup",
     "RecipeJson",  # ← expose

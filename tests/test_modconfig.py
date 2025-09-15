@@ -13,6 +13,7 @@ from unittest.mock import patch
 from fabricpy.modconfig import ModConfig
 from fabricpy.item import Item
 from fabricpy.fooditem import FoodItem
+from fabricpy.toolitem import ToolItem
 from fabricpy.block import Block
 from fabricpy.itemgroup import ItemGroup
 from fabricpy.recipejson import RecipeJson
@@ -875,10 +876,11 @@ class TestModConfigIntegration(unittest.TestCase):
         weapons_group = ItemGroup(id="test_weapons", name="Test Weapons")
         
         # Create multiple items in same group
-        sword = Item(
+        sword = ToolItem(
             id="grouped:test_sword",
             name="Test Sword",
-            item_group=weapons_group
+            item_group=weapons_group,
+            durability=250,
         )
         
         bow = Item(

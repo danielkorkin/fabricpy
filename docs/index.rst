@@ -11,7 +11,7 @@ fabricpy is a lightweight helper library for writing Fabric mods in Python. It p
 Features
 --------
 
-* **Item Registration**: Easy creation of custom items and food items
+* **Item Registration**: Easy creation of custom items, tools, and food items
 * **Block Registration**: Simple block creation with automatic BlockItem generation  
 * **Recipe Support**: Built-in recipe JSON handling for crafting, smelting, etc.
 * **Creative Tabs**: Support for both vanilla and custom creative inventory tabs
@@ -52,6 +52,11 @@ Helpful Tools
 -------------
 
 * `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ - Visual interface for creating crafting recipe JSON files
+
+Examples
+--------
+
+The ``examples`` directory contains runnable scripts showcasing fabricpy features, including a ToolItem demonstration.
 
 .. toctree::
    :maxdepth: 2
