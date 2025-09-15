@@ -862,6 +862,67 @@ class TestModConfigIntegration(unittest.TestCase):
         self.assertEqual(len(custom_groups), 1)
         self.assertIn(custom_group, custom_groups)
 
+    def test_tool_item_properties_applied(self):
+        """ToolItem settings are emitted into generated Java source."""
+        mod_config = ModConfig(
+            mod_id="tools",
+            name="Tools Mod",
+            version="1.0.0",
+            description="Test mod for tools",
+            authors=["Tester"],
+            project_dir=self.project_dir,
+        )
+
+        tool = ToolItem(
+            id="tools:ruby_pickaxe",
+            name="Ruby Pickaxe",
+            durability=500,
+            mining_speed_multiplier=8.0,
+            attack_damage=3.0,
+            mining_level=2,
+            enchantability=22,
+            repair_ingredient="minecraft:ruby",
+        )
+
+        mod_config.registerItem(tool)
+        mod_config.create_item_files(self.project_dir, "com.example.tools.items")
+
+        tut_path = os.path.join(
+            self.project_dir,
+            "src",
+            "main",
+            "java",
+            "com",
+            "example",
+            "tools",
+            "items",
+            "TutorialItems.java",
+        )
+
+        with open(tut_path, "r", encoding="utf-8") as fh:
+            content = fh.read()
+
+        self.assertIn(
+            "new CustomToolItem(500, 8.0f, 3.0f, 2, 22, \"minecraft:ruby\", 1, s)",
+            content,
+        )
+
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(
+                    self.project_dir,
+                    "src",
+                    "main",
+                    "java",
+                    "com",
+                    "example",
+                    "tools",
+                    "items",
+                    "CustomToolItem.java",
+                )
+            )
+        )
+
     def test_multiple_items_same_group(self):
         """Test multiple items in the same custom group."""
         mod_config = ModConfig(
