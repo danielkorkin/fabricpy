@@ -2,13 +2,13 @@
 Fabric Compilation and Testing Workflow Tests.
 """
 
-import unittest
-import tempfile
+import json
 import os
 import shutil
-import json
+import tempfile
+import unittest
 
-from fabricpy import ModConfig, Item, FoodItem, Block, RecipeJson
+from fabricpy import Block, FoodItem, Item, ModConfig, RecipeJson
 
 
 class TestFabricCompilationWorkflow(unittest.TestCase):
@@ -27,7 +27,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
     def test_fabric_testing_workflow(self):
         """Test the complete workflow from mod creation to testing."""
         print("\n🔨 Testing Complete Fabric Testing Workflow")
-        
+
         # Create a mod with testing enabled
         mod = ModConfig(
             mod_id="fabric_workflow_test",
@@ -38,19 +38,21 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             project_dir=os.path.join(self.temp_dir, "fabric-workflow-test"),
             enable_testing=True,
             generate_unit_tests=True,
-            generate_game_tests=True
+            generate_game_tests=True,
         )
 
         # Add test components
         test_item = Item(
             id="fabric_workflow_test:test_item",
             name="Test Item",
-            recipe=RecipeJson({
-                "type": "minecraft:crafting_shaped",
-                "pattern": ["#"],
-                "key": {"#": "minecraft:iron_ingot"},
-                "result": {"id": "fabric_workflow_test:test_item", "count": 1}
-            })
+            recipe=RecipeJson(
+                {
+                    "type": "minecraft:crafting_shaped",
+                    "pattern": ["#"],
+                    "key": {"#": "minecraft:iron_ingot"},
+                    "result": {"id": "fabric_workflow_test:test_item", "count": 1},
+                }
+            ),
         )
 
         test_food = FoodItem(
@@ -58,7 +60,7 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             name="Test Food",
             nutrition=6,
             saturation=8.0,
-            always_edible=True
+            always_edible=True,
         )
 
         mod.registerItem(test_item)
@@ -70,23 +72,31 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
         # Verify project structure
         self.assertTrue(os.path.exists(mod.project_dir))
         self.assertTrue(os.path.exists(os.path.join(mod.project_dir, "build.gradle")))
-        self.assertTrue(os.path.exists(os.path.join(mod.project_dir, "src/main/resources/fabric.mod.json")))
+        self.assertTrue(
+            os.path.exists(
+                os.path.join(mod.project_dir, "src/main/resources/fabric.mod.json")
+            )
+        )
 
         # Verify testing setup
         self.assertTrue(os.path.exists(os.path.join(mod.project_dir, "src/test/java")))
-        self.assertTrue(os.path.exists(os.path.join(mod.project_dir, "src/gametest/java")))
-        self.assertTrue(os.path.exists(os.path.join(mod.project_dir, "src/gametest/resources")))
+        self.assertTrue(
+            os.path.exists(os.path.join(mod.project_dir, "src/gametest/java"))
+        )
+        self.assertTrue(
+            os.path.exists(os.path.join(mod.project_dir, "src/gametest/resources"))
+        )
 
         # Verify build.gradle has testing configuration
         build_gradle_path = os.path.join(mod.project_dir, "build.gradle")
-        with open(build_gradle_path, 'r') as f:
+        with open(build_gradle_path, "r") as f:
             content = f.read()
             self.assertIn("fabric-loader-junit", content)
             self.assertIn("useJUnitPlatform", content)
 
         # Verify fabric.mod.json dependency ranges
         meta_path = os.path.join(mod.project_dir, "src/main/resources/fabric.mod.json")
-        with open(meta_path, 'r') as f:
+        with open(meta_path, "r") as f:
             meta = json.load(f)
             self.assertEqual(meta["depends"]["minecraft"], ">=1.21 <1.22")
             self.assertEqual(meta["depends"]["fabricloader"], ">=0.16.0")
@@ -103,33 +113,35 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             authors=["fabricpy-test"],
             project_dir=os.path.join(self.temp_dir, "junit-setup-test"),
             enable_testing=True,
-            generate_unit_tests=True
+            generate_unit_tests=True,
         )
 
         # Add simple item for testing
-        test_item = Item(
-            id="junit_setup_test:simple_item",
-            name="Simple Test Item"
-        )
+        test_item = Item(id="junit_setup_test:simple_item", name="Simple Test Item")
         mod.registerItem(test_item)
         mod.compile()
 
         # Verify unit test files were generated
-        test_dir = os.path.join(mod.project_dir, "src/test/java/com/example/junit_setup_test/test")
+        test_dir = os.path.join(
+            mod.project_dir, "src/test/java/com/example/junit_setup_test/test"
+        )
         # Check if test directory exists or if the compiled mod structure was created
         project_structure_exists = os.path.exists(os.path.join(mod.project_dir, "src"))
-        self.assertTrue(project_structure_exists, "Project structure should be created after compilation")
+        self.assertTrue(
+            project_structure_exists,
+            "Project structure should be created after compilation",
+        )
 
         # Check for specific test files
         item_test_file = os.path.join(test_dir, "ItemRegistrationTest.java")
         if os.path.exists(item_test_file):
-            with open(item_test_file, 'r') as f:
+            with open(item_test_file, "r") as f:
                 content = f.read()
                 # Verify Fabric testing patterns from documentation
                 self.assertIn("@BeforeAll", content)
-                self.assertIn("SharedConstants.createGameVersion();", content)
-                self.assertIn("Bootstrap.initialize();", content)
-                self.assertIn("Registries.ITEM.get", content)
+                self.assertIn("SharedConstants.tryDetectVersion();", content)
+                self.assertIn("Bootstrap.bootStrap();", content)
+                self.assertIn("BuiltInRegistries.ITEM", content)
 
     def test_fabric_game_tests(self):
         """Test that game tests are generated according to Fabric documentation."""
@@ -141,30 +153,31 @@ class TestFabricCompilationWorkflow(unittest.TestCase):
             authors=["fabricpy-gametest"],
             project_dir=os.path.join(self.temp_dir, "gametest-demo"),
             enable_testing=True,
-            generate_game_tests=True
+            generate_game_tests=True,
         )
 
         # Add block for game testing
-        test_block = Block(
-            id="gametest_demo:test_block",
-            name="Test Block"
-        )
+        test_block = Block(id="gametest_demo:test_block", name="Test Block")
         mod.registerBlock(test_block)
         mod.compile()
 
         # Verify game test structure
-        gametest_dir = os.path.join(mod.project_dir, "src/gametest/java/com/example", mod.mod_id)
+        gametest_dir = os.path.join(
+            mod.project_dir, "src/gametest/java/com/example", mod.mod_id
+        )
         self.assertTrue(os.path.exists(gametest_dir))
 
         # Verify gametest fabric.mod.json
-        gametest_fabric_mod = os.path.join(mod.project_dir, "src/gametest/resources/fabric.mod.json")
+        gametest_fabric_mod = os.path.join(
+            mod.project_dir, "src/gametest/resources/fabric.mod.json"
+        )
         self.assertTrue(os.path.exists(gametest_fabric_mod))
 
-        with open(gametest_fabric_mod, 'r') as f:
+        with open(gametest_fabric_mod, "r") as f:
             config = json.load(f)
             self.assertIn("fabric-gametest", config["entrypoints"])
             self.assertIn("fabric-client-gametest", config["entrypoints"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

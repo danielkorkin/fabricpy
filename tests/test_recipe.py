@@ -2,8 +2,9 @@
 Unit tests for the RecipeJson class.
 """
 
-import unittest
 import json
+import unittest
+
 from fabricpy.recipejson import RecipeJson
 
 
@@ -12,7 +13,9 @@ class TestRecipeJson(unittest.TestCase):
 
     def test_recipe_creation_from_string(self):
         """Test creating a recipe from a JSON string."""
-        recipe_str = '{"type": "minecraft:crafting_shaped", "result": {"id": "test:item"}}'
+        recipe_str = (
+            '{"type": "minecraft:crafting_shaped", "result": {"id": "test:item"}}'
+        )
         recipe = RecipeJson(recipe_str)
         self.assertEqual(recipe.data["type"], "minecraft:crafting_shaped")
         self.assertEqual(recipe.data["result"]["id"], "test:item")
@@ -21,7 +24,7 @@ class TestRecipeJson(unittest.TestCase):
         """Test creating a recipe from a dictionary."""
         recipe_dict = {
             "type": "minecraft:crafting_shapeless",
-            "result": {"id": "testmod:bread", "count": 2}
+            "result": {"id": "testmod:bread", "count": 2},
         }
         recipe = RecipeJson(recipe_dict)
         self.assertEqual(recipe.data["type"], "minecraft:crafting_shapeless")
@@ -29,19 +32,18 @@ class TestRecipeJson(unittest.TestCase):
 
     def test_recipe_result_id_extraction(self):
         """Test extracting result ID from recipes."""
-        recipe_new = RecipeJson({
-            "type": "minecraft:crafting_shaped",
-            "result": {"id": "testmod:new_item", "count": 1}
-        })
+        recipe_new = RecipeJson(
+            {
+                "type": "minecraft:crafting_shaped",
+                "result": {"id": "testmod:new_item", "count": 1},
+            }
+        )
         self.assertEqual(recipe_new.result_id, "testmod:new_item")
         self.assertEqual(recipe_new.get_result_id(), "testmod:new_item")
 
     def test_recipe_result_id_none(self):
         """Test recipe with no result ID."""
-        recipe = RecipeJson({
-            "type": "minecraft:smelting",
-            "result": {"count": 1}
-        })
+        recipe = RecipeJson({"type": "minecraft:smelting", "result": {"count": 1}})
         self.assertIsNone(recipe.result_id)
         self.assertIsNone(recipe.get_result_id())
 
@@ -60,9 +62,9 @@ class TestRecipeJson(unittest.TestCase):
                 "A": "minecraft:iron_ingot",
                 "B": "minecraft:diamond",
                 "C": "minecraft:redstone",
-                "D": "minecraft:gold_block"
+                "D": "minecraft:gold_block",
             },
-            "result": {"id": "testmod:advanced_machine", "count": 1}
+            "result": {"id": "testmod:advanced_machine", "count": 1},
         }
         recipe = RecipeJson(recipe_dict)
         self.assertEqual(recipe.data["type"], "minecraft:crafting_shaped")
@@ -74,11 +76,8 @@ class TestRecipeJson(unittest.TestCase):
         """Test a shapeless recipe."""
         recipe_dict = {
             "type": "minecraft:crafting_shapeless",
-            "ingredients": [
-                {"item": "minecraft:wheat"},
-                {"item": "minecraft:egg"}
-            ],
-            "result": {"id": "testmod:cake", "count": 1}
+            "ingredients": [{"item": "minecraft:wheat"}, {"item": "minecraft:egg"}],
+            "result": {"id": "testmod:cake", "count": 1},
         }
         recipe = RecipeJson(recipe_dict)
         self.assertEqual(recipe.data["type"], "minecraft:crafting_shapeless")
@@ -92,7 +91,7 @@ class TestRecipeJson(unittest.TestCase):
             "ingredient": {"item": "testmod:raw_copper"},
             "result": {"id": "minecraft:copper_ingot", "count": 1},
             "experience": 0.7,
-            "cookingtime": 200
+            "cookingtime": 200,
         }
         recipe = RecipeJson(recipe_dict)
         self.assertEqual(recipe.data["type"], "minecraft:smelting")
@@ -102,7 +101,9 @@ class TestRecipeJson(unittest.TestCase):
 
     def test_recipe_text_property(self):
         """Test that the text property preserves formatting."""
-        original_str = '{"type": "minecraft:crafting_shaped", "result": {"id": "testmod:item"}}'
+        original_str = (
+            '{"type": "minecraft:crafting_shaped", "result": {"id": "testmod:item"}}'
+        )
         recipe = RecipeJson(original_str)
         parsed_from_text = json.loads(recipe.text)
         self.assertEqual(parsed_from_text["type"], "minecraft:crafting_shaped")
@@ -116,9 +117,9 @@ class TestRecipeJson(unittest.TestCase):
                 "A": "minecraft:iron_ingot",
                 "B": "minecraft:gold_ingot",
                 "C": "minecraft:diamond",
-                "D": "minecraft:emerald"
+                "D": "minecraft:emerald",
             },
-            "result": {"id": "testmod:precious_block", "count": 1}
+            "result": {"id": "testmod:precious_block", "count": 1},
         }
         recipe = RecipeJson(original_dict)
         parsed_dict = json.loads(recipe.text)
@@ -128,5 +129,5 @@ class TestRecipeJson(unittest.TestCase):
         self.assertEqual(parsed_dict["result"], original_dict["result"])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

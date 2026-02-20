@@ -15,7 +15,7 @@ Generates a ready-to-build Fabric mod project on disk.
 * **NEW:** supports `build()` to produce the mod JAR, and `run()` to launch
             a development client via Gradle.
 
-Tested against **Minecraft 1.21.5 + Fabric-API 0.119.5**.
+Tested against **Minecraft 1.21.11 + Fabric-API 0.141.3**.
 """
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ class ModConfig:
             generate_unit_tests (bool, optional): Whether to generate unit tests for
                 registered items and blocks. Defaults to True.
             generate_game_tests (bool, optional): Whether to generate Fabric game tests
-                that run in a Minecraft environment. Defaults to False to prevent 
+                that run in a Minecraft environment. Defaults to False to prevent
                 build compilation issues.
 
         Example:
@@ -604,19 +604,19 @@ class ModConfig:
 
         L: List[str] = []
         L.append(f"package {pkg};\n")
-        L.append("import net.minecraft.item.Item;")
+        L.append("import net.minecraft.world.item.Item;")
         if has_food:
-            L.append("import net.minecraft.component.type.FoodComponent;")
-        L.append("import net.minecraft.util.Identifier;")
-        L.append("import net.minecraft.registry.Registry;")
-        L.append("import net.minecraft.registry.RegistryKey;")
-        L.append("import net.minecraft.registry.RegistryKeys;")
-        L.append("import net.minecraft.registry.Registries;")
+            L.append("import net.minecraft.world.food.FoodProperties;")
+        L.append("import net.minecraft.resources.Identifier;")
+        L.append("import net.minecraft.core.Registry;")
+        L.append("import net.minecraft.resources.ResourceKey;")
+        L.append("import net.minecraft.core.registries.Registries;")
+        L.append("import net.minecraft.core.registries.BuiltInRegistries;")
         if has_tool:
             L.append(f"import {pkg}.CustomToolItem;")
         if has_vanila:
             L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            L.append("import net.minecraft.item.ItemGroups;")
+            L.append("import net.minecraft.world.item.CreativeModeTab;")
         L.append("import java.util.function.Function;\n")
         L.append("public final class TutorialItems {")
         L.append("    private TutorialItems() {}\n")
@@ -631,13 +631,13 @@ class ModConfig:
                 if itm.always_edible:
                     b.append(".alwaysEdible()")
                 settings = (
-                    "new Item.Settings()"
-                    f".food(new FoodComponent.Builder(){''.join(b)}.build())"
-                    f".maxCount({itm.max_stack_size})"
+                    "new Item.Properties()"
+                    f".food(new FoodProperties.Builder(){''.join(b)}.build())"
+                    f".stacksTo({itm.max_stack_size})"
                 )
                 factory = "Item::new"
             elif isinstance(itm, ToolItem):
-                settings = "new Item.Settings()"
+                settings = "new Item.Properties()"
                 repair = (
                     "null"
                     if itm.repair_ingredient is None
@@ -650,7 +650,7 @@ class ModConfig:
                     f"{repair}, {itm.max_stack_size}, s)"
                 )
             else:
-                settings = f"new Item.Settings().maxCount({itm.max_stack_size})"
+                settings = f"new Item.Properties().stacksTo({itm.max_stack_size})"
                 factory = "CustomItem::new"
 
             # Extract just the path part if the ID is namespaced
@@ -662,14 +662,14 @@ class ModConfig:
         L.append("")
         L.append(
             "    private static Item register(String path, "
-            "Function<Item.Settings, Item> factory, Item.Settings settings) {"
+            "Function<Item.Properties, Item> factory, Item.Properties settings) {"
         )
         L.append(
-            f'        RegistryKey<Item> key = RegistryKey.of(RegistryKeys.ITEM, Identifier.of("{self.mod_id}", path));'
+            f'        ResourceKey<Item> key = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("{self.mod_id}", path));'
         )
-        L.append("        settings = settings.registryKey(key);")
+        L.append("        settings = settings.setId(key);")
         L.append(
-            f'        return Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", path), factory.apply(settings));'
+            f"        return Registry.register(BuiltInRegistries.ITEM, key, factory.apply(settings));"
         )
         L.append("    }\n")
         L.append("    public static void initialize() {")
@@ -680,10 +680,10 @@ class ModConfig:
                     groups[itm.item_group].append(self._to_java_constant(itm.id))
             for g, consts in groups.items():
                 L.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
+                    f'        ItemGroupEvents.modifyEntriesEvent(ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath("minecraft", "{g}"))).register(e -> {{'
                 )
                 for c in consts:
-                    L.append(f"            e.add({c});")
+                    L.append(f"            e.accept({c});")
                 L.append("        });")
         L.append("    }")
         L.append("}")
@@ -703,24 +703,24 @@ class ModConfig:
         """
         return f"""package {pkg};
 
-import net.minecraft.item.Item;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.world.World;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.level.Level;
 
 public class CustomItem extends Item {{
-    public CustomItem(Settings settings) {{ super(settings); }}
+    public CustomItem(Properties settings) {{ super(settings); }}
 
     @Override
-    public ActionResult use(World world, PlayerEntity user, Hand hand) {{
-        if (!world.isClient()) {{
-            world.playSound(null, user.getBlockPos(),
-                    SoundEvents.BLOCK_WOOL_BREAK, SoundCategory.PLAYERS, 1F, 1F);
+    public InteractionResult use(Level level, Player user, InteractionHand hand) {{
+        if (!level.isClientSide()) {{
+            level.playSound(null, user.blockPosition(),
+                    SoundEvents.WOOL_BREAK, SoundSource.PLAYERS, 1F, 1F);
         }}
-        return ActionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }}
 }}
 """
@@ -740,41 +740,41 @@ public class CustomItem extends Item {{
 
         return f"""package {pkg};
 
-import net.minecraft.block.BlockState;
-import net.minecraft.component.type.AttributeModifiersComponent;
-import net.minecraft.component.type.AttributeModifierSlot;
-import net.minecraft.entity.attribute.EntityAttribute;
-import net.minecraft.entity.attribute.EntityAttributeModifier;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
+import net.minecraft.world.entity.EquipmentSlotGroup;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 
 public class CustomToolItem extends Item {{
-    private static final Identifier ATTACK_DAMAGE_MODIFIER_ID = Identifier.of("fabricpy", "tool_damage");
+    private static final Identifier ATTACK_DAMAGE_MODIFIER_ID = Identifier.fromNamespaceAndPath("fabricpy", "tool_damage");
     private final float miningSpeedMultiplier;
     private final int miningLevel;
 
     public CustomToolItem(int durability, float miningSpeedMultiplier, float attackDamage,
             int miningLevel, int enchantability, String repairIngredientId,
-            int maxCount, Settings settings) {{
+            int maxCount, Properties settings) {{
         super((repairIngredientId == null ? settings
-                : settings.repairable(Registries.ITEM.get(Identifier.of(repairIngredientId))))
-                .maxCount(maxCount)
-                .maxDamage(durability)
+                : settings.repairable(BuiltInRegistries.ITEM.getValue(Identifier.parse(repairIngredientId))))
+                .stacksTo(maxCount)
+                .durability(durability)
                 .enchantable(enchantability)
-                .attributeModifiers(AttributeModifiersComponent.builder()
-                        .add(EntityAttributes.ATTACK_DAMAGE,
-                                new EntityAttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, attackDamage, EntityAttributeModifier.Operation.ADD_VALUE),
-                                AttributeModifierSlot.MAINHAND)
+                .attributes(ItemAttributeModifiers.builder()
+                        .add(Attributes.ATTACK_DAMAGE,
+                                new AttributeModifier(ATTACK_DAMAGE_MODIFIER_ID, attackDamage, AttributeModifier.Operation.ADD_VALUE),
+                                EquipmentSlotGroup.MAINHAND)
                         .build()));
         this.miningSpeedMultiplier = miningSpeedMultiplier;
         this.miningLevel = miningLevel;
     }}
 
     @Override
-    public float getMiningSpeed(ItemStack stack, BlockState state) {{
+    public float getDestroySpeed(ItemStack stack, BlockState state) {{
         return this.miningSpeedMultiplier;
     }}
 }}
@@ -859,14 +859,14 @@ public class CustomToolItem extends Item {{
         L.append(f"package {pkg};\n")
         L.append("import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;")
         L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-        L.append("import net.minecraft.item.ItemGroup;")
-        L.append("import net.minecraft.item.ItemStack;")
-        L.append("import net.minecraft.registry.Registry;")
-        L.append("import net.minecraft.registry.RegistryKey;")
-        L.append("import net.minecraft.registry.RegistryKeys;")
-        L.append("import net.minecraft.registry.Registries;")
-        L.append("import net.minecraft.util.Identifier;")
-        L.append("import net.minecraft.text.Text;")
+        L.append("import net.minecraft.world.item.CreativeModeTab;")
+        L.append("import net.minecraft.world.item.ItemStack;")
+        L.append("import net.minecraft.core.Registry;")
+        L.append("import net.minecraft.resources.ResourceKey;")
+        L.append("import net.minecraft.core.registries.Registries;")
+        L.append("import net.minecraft.core.registries.BuiltInRegistries;")
+        L.append("import net.minecraft.resources.Identifier;")
+        L.append("import net.minecraft.network.chat.Component;")
         if blocks_referenced:
             L.append(f"import com.example.{self.mod_id}.blocks.TutorialBlocks;")
         L.append("\npublic final class TutorialItemGroups {")
@@ -887,8 +887,8 @@ public class CustomToolItem extends Item {{
         for grp in self._custom_groups:
             const = self._to_java_constant(grp.id)
             L.append(
-                f"    public static final RegistryKey<ItemGroup> {const}_KEY = "
-                f'RegistryKey.of(RegistryKeys.ITEM_GROUP, Identifier.of("{self.mod_id}", "{grp.id}"));'
+                f"    public static final ResourceKey<CreativeModeTab> {const}_KEY = "
+                f'ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath("{self.mod_id}", "{grp.id}"));'
             )
             icon_expr = (
                 f"TutorialItems.{self._to_java_constant(grp.icon_item_id)}"
@@ -896,9 +896,9 @@ public class CustomToolItem extends Item {{
                 else group_entries[grp][0]
             )
             L.append(
-                f"    public static final ItemGroup {const} = FabricItemGroup.builder()\n"
+                f"    public static final CreativeModeTab {const} = FabricItemGroup.builder()\n"
                 f"        .icon(() -> new ItemStack({icon_expr}))\n"
-                f'        .displayName(Text.translatable("itemGroup.{self.mod_id}.{grp.id}"))\n'
+                f'        .title(Component.translatable("itemGroup.{self.mod_id}.{grp.id}"))\n'
                 "        .build();\n"
             )
 
@@ -906,13 +906,13 @@ public class CustomToolItem extends Item {{
         for grp in self._custom_groups:
             const = self._to_java_constant(grp.id)
             L.append(
-                f"        Registry.register(Registries.ITEM_GROUP, {const}_KEY, {const});"
+                f"        Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, {const}_KEY, {const});"
             )
             L.append(
                 f"        ItemGroupEvents.modifyEntriesEvent({const}_KEY).register(e -> {{"
             )
             for expr in group_entries[grp]:
-                L.append(f"            e.add({expr});")
+                L.append(f"            e.accept({expr});")
             L.append("        });")
         L.append("    }\n}")
         return "\n".join(L)
@@ -1209,33 +1209,33 @@ public class CustomToolItem extends Item {{
         has_left_click = any(left_handlers.values())
         has_right_click = any(right_handlers.values())
         needs_text = any(
-            "Text.literal" in ev
+            "Component.literal" in ev
             for ev in list(left_handlers.values()) + list(right_handlers.values())
             if ev
         )
         L: List[str] = []
         L.append(f"package {pkg};\n")
-        L.append("import net.minecraft.block.Block;")
-        L.append("import net.minecraft.block.AbstractBlock;")
-        L.append("import net.minecraft.block.Blocks;")
-        L.append("import net.minecraft.item.BlockItem;")
-        L.append("import net.minecraft.item.Item;")
-        L.append("import net.minecraft.util.Identifier;")
-        L.append("import net.minecraft.registry.Registry;")
-        L.append("import net.minecraft.registry.RegistryKey;")
-        L.append("import net.minecraft.registry.RegistryKeys;")
-        L.append("import net.minecraft.registry.Registries;")
+        L.append("import net.minecraft.world.level.block.Block;")
+        L.append("import net.minecraft.world.level.block.state.BlockBehaviour;")
+        L.append("import net.minecraft.world.level.block.Blocks;")
+        L.append("import net.minecraft.world.item.BlockItem;")
+        L.append("import net.minecraft.world.item.Item;")
+        L.append("import net.minecraft.resources.Identifier;")
+        L.append("import net.minecraft.core.Registry;")
+        L.append("import net.minecraft.resources.ResourceKey;")
+        L.append("import net.minecraft.core.registries.Registries;")
+        L.append("import net.minecraft.core.registries.BuiltInRegistries;")
         if needs_text:
-            L.append("import net.minecraft.text.Text;")
+            L.append("import net.minecraft.network.chat.Component;")
         if has_vanila:
             L.append("import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;")
-            L.append("import net.minecraft.item.ItemGroups;")
+            L.append("import net.minecraft.world.item.CreativeModeTab;")
         if has_left_click:
             L.append("import net.fabricmc.fabric.api.event.player.AttackBlockCallback;")
         if has_right_click:
             L.append("import net.fabricmc.fabric.api.event.player.UseBlockCallback;")
         if has_left_click or has_right_click:
-            L.append("import net.minecraft.util.ActionResult;")
+            L.append("import net.minecraft.world.InteractionResult;")
         L.append("import java.util.function.Function;\n")
         L.append("public final class TutorialBlocks {")
         L.append("    private TutorialBlocks() {}\n")
@@ -1245,26 +1245,27 @@ public class CustomToolItem extends Item {{
             block_path = blk.id.split(":", 1)[-1]
             L.append(
                 f'    public static final Block {const} = register("{block_path}", '
-                f"CustomBlock::new, AbstractBlock.Settings.copy(Blocks.STONE).requiresTool(), true);"
+                f"CustomBlock::new, BlockBehaviour.Properties.ofFullCopy(Blocks.STONE).requiresCorrectToolForDrops(), true);"
             )
         L.append("")
         L.append(
-            "    private static Block register(String p, Function<AbstractBlock.Settings, Block> f, "
-            "AbstractBlock.Settings s, boolean makeItem) {"
+            "    private static Block register(String p, Function<BlockBehaviour.Properties, Block> f, "
+            "BlockBehaviour.Properties s, boolean makeItem) {"
         )
         L.append(
-            f'        RegistryKey<Block> bKey = RegistryKey.of(RegistryKeys.BLOCK, Identifier.of("{self.mod_id}", p));'
+            f'        ResourceKey<Block> bKey = ResourceKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath("{self.mod_id}", p));'
         )
-        L.append("        s = s.registryKey(bKey);")
+        L.append("        s = s.setId(bKey);")
         L.append(
-            f'        Block b = Registry.register(Registries.BLOCK, Identifier.of("{self.mod_id}", p), f.apply(s));'
+            f"        Block b = Registry.register(BuiltInRegistries.BLOCK, bKey, f.apply(s));"
         )
         L.append("        if (makeItem) {")
         L.append(
-            f'            Registry.register(Registries.ITEM, Identifier.of("{self.mod_id}", p), '
-            "new BlockItem(b, new Item.Settings().registryKey("
-            "RegistryKey.of(RegistryKeys.ITEM, Identifier.of("
-            f'"{self.mod_id}", p)))));'
+            f'            ResourceKey<Item> itemKey = ResourceKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("{self.mod_id}", p));'
+        )
+        L.append(
+            "            Registry.register(BuiltInRegistries.ITEM, itemKey, "
+            "new BlockItem(b, new Item.Properties().setId(itemKey)));"
         )
         L.append("        }")
         L.append("        return b;")
@@ -1277,13 +1278,15 @@ public class CustomToolItem extends Item {{
                     groups[blk.item_group].append(self._to_java_constant(blk.id))
             for g, consts in groups.items():
                 L.append(
-                    f"        ItemGroupEvents.modifyEntriesEvent(ItemGroups.{g}).register(e -> {{"
+                    f'        ItemGroupEvents.modifyEntriesEvent(ResourceKey.create(Registries.CREATIVE_MODE_TAB, Identifier.fromNamespaceAndPath("minecraft", "{g}"))).register(e -> {{'
                 )
                 for c in consts:
-                    L.append(f"            e.add({c}.asItem());")
+                    L.append(f"            e.accept({c}.asItem());")
                 L.append("        });")
         if has_left_click:
-            L.append("        AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {")
+            L.append(
+                "        AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> {"
+            )
             for blk, code in left_handlers.items():
                 if code:
                     const = self._to_java_constant(blk.id)
@@ -1292,12 +1295,14 @@ public class CustomToolItem extends Item {{
                     )
                     for line in code.splitlines():
                         L.append(f"                {line}")
-                    L.append("                return ActionResult.SUCCESS;")
+                    L.append("                return InteractionResult.SUCCESS;")
                     L.append("            }")
-            L.append("            return ActionResult.PASS;")
+            L.append("            return InteractionResult.PASS;")
             L.append("        });")
         if has_right_click:
-            L.append("        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {")
+            L.append(
+                "        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {"
+            )
             for blk, code in right_handlers.items():
                 if code:
                     const = self._to_java_constant(blk.id)
@@ -1306,9 +1311,9 @@ public class CustomToolItem extends Item {{
                     )
                     for line in code.splitlines():
                         L.append(f"                {line}")
-                    L.append("                return ActionResult.SUCCESS;")
+                    L.append("                return InteractionResult.SUCCESS;")
                     L.append("            }")
-            L.append("            return ActionResult.PASS;")
+            L.append("            return InteractionResult.PASS;")
             L.append("        });")
         L.append("    }")
         L.append("}")
@@ -1327,11 +1332,11 @@ public class CustomToolItem extends Item {{
         """
         return f"""package {pkg};
 
-import net.minecraft.block.Block;
-import net.minecraft.block.AbstractBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 
 public class CustomBlock extends Block {{
-    public CustomBlock(AbstractBlock.Settings s) {{ super(s); }}
+    public CustomBlock(BlockBehaviour.Properties s) {{ super(s); }}
 }}
 """
 
@@ -1522,10 +1527,10 @@ public class CustomBlock extends Block {{
         """
         if not os.path.isdir(self.project_dir):
             raise RuntimeError("Project directory not found – call compile() first.")
-        
+
         # Ensure gradle.properties has required properties
         self._ensure_gradle_properties(self.project_dir)
-        
+
         print("🔨 Building mod JAR …")
         subprocess.check_call(["./gradlew", "build"], cwd=self.project_dir)
         print("✔ Build complete – JAR written to build/libs/")
@@ -1594,7 +1599,7 @@ public class CustomBlock extends Block {{
 
     def _enhance_build_gradle_for_testing(self, project_dir: str):
         """Add Fabric testing configuration to build.gradle.
-        
+
         Conditionally adds game testing dependencies based on:
         1. Whether generate_game_tests is enabled, or
         2. Whether existing game test files are detected in the project
@@ -1612,7 +1617,9 @@ public class CustomBlock extends Block {{
             return
 
         # Check if we should add game testing dependencies
-        should_add_game_tests = self.generate_game_tests or self._has_game_tests(project_dir)
+        should_add_game_tests = self.generate_game_tests or self._has_game_tests(
+            project_dir
+        )
 
         # Base testing configuration (always added)
         testing_config = """
@@ -1666,19 +1673,22 @@ task unitTest(type: Test) {
     def _ensure_gradle_properties(self, project_dir: str):
         """Ensure gradle.properties has the proper Fabric mod structure and configuration."""
         gradle_props_path = os.path.join(project_dir, "gradle.properties")
-        
+
         # Create gradle.properties with standard Fabric format
         # This overwrites any existing file to ensure consistency
         gradle_props_content = f"""# Done to increase the memory available to gradle.
 org.gradle.jvmargs=-Xmx1G
 org.gradle.parallel=true
 
+# IntelliJ IDEA is not yet fully compatible with configuration cache, see:
+# https://github.com/FabricMC/fabric-loom/issues/1349
+org.gradle.configuration-cache=false
+
 # Fabric Properties
 # check these on https://fabricmc.net/develop
-minecraft_version=1.21.5
-yarn_mappings=1.21.5+build.1
-loader_version=0.16.10
-loom_version=1.11-SNAPSHOT
+minecraft_version=1.21.11
+loader_version=0.18.4
+loom_version=1.15-SNAPSHOT
 
 # Mod Properties
 mod_version={self.version}
@@ -1687,7 +1697,7 @@ archives_base_name={self.mod_id}
 mod_id={self.mod_id}
 
 # Dependencies
-fabric_version=0.119.5+1.21.5
+fabric_version=0.141.3+1.21.11
 """
 
         with open(gradle_props_path, "w", encoding="utf-8") as f:
@@ -1734,21 +1744,19 @@ fabric_version=0.119.5+1.21.5
 
     def _generate_item_registration_test(self, test_dir: str):
         """Generate unit test for item registration."""
-        package_name = (
-            f"com.example.{self.mod_id}.test"
-        )
+        package_name = f"com.example.{self.mod_id}.test"
 
         test_content = f"""package {package_name};
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.SharedConstants;
-import net.minecraft.Bootstrap;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.FoodComponent;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.food.FoodProperties;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1766,8 +1774,8 @@ public class ItemRegistrationTest {{
     @BeforeAll
     static void beforeAll() {{
         // Initialize Minecraft registries for testing
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         
         // Initialize our mod items
         TutorialItems.initialize();
@@ -1786,7 +1794,7 @@ public class ItemRegistrationTest {{
                 safe_name = path.replace("-", "_").replace(".", "_")
                 test_content += f'''
         // Test {item.name}
-        Item {safe_name} = Registries.ITEM.get(Identifier.of("{namespace}", "{path}"));
+        Item {safe_name} = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}"));
         Assertions.assertNotNull({safe_name}, "{item.name} should be registered");
         
         ItemStack {safe_name}_stack = new ItemStack({safe_name}, 1);
@@ -1800,7 +1808,7 @@ public class ItemRegistrationTest {{
     @DisplayName("Test vanilla items are accessible (registry working)")
     void testVanillaItemsAccessible() {
         ItemStack diamondStack = new ItemStack(Items.DIAMOND, 1);
-        Assertions.assertTrue(diamondStack.isOf(Items.DIAMOND));
+        Assertions.assertTrue(diamondStack.is(Items.DIAMOND));
         Assertions.assertEquals(1, diamondStack.getCount());
     }
 
@@ -1818,9 +1826,9 @@ public class ItemRegistrationTest {{
                     safe_name = path.replace("-", "_").replace(".", "_")
                     test_content += f'''
         // Test {item.name} food properties
-        Item {safe_name} = Registries.ITEM.get(Identifier.of("{namespace}", "{path}"));
+        Item {safe_name} = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}"));
         ItemStack {safe_name}_stack = new ItemStack({safe_name});
-        FoodComponent foodComponent = {safe_name}_stack.get(DataComponentTypes.FOOD);
+        FoodProperties foodComponent = {safe_name}_stack.get(DataComponents.FOOD);
         
         Assertions.assertNotNull(foodComponent, "{item.name} should have food component");
         Assertions.assertEquals({item.nutrition}, foodComponent.nutrition(), 
@@ -1854,16 +1862,14 @@ public class ItemRegistrationTest {{
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = (
-            f"com.example.{self.mod_id}.test"
-        )
+        package_name = f"com.example.{self.mod_id}.test"
 
         test_content = f"""package {package_name};
 
-import net.minecraft.recipe.RecipeType;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.resources.Identifier;
 import net.minecraft.SharedConstants;
-import net.minecraft.Bootstrap;
+import net.minecraft.server.Bootstrap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1878,8 +1884,8 @@ public class RecipeValidationTest {{
 
     @BeforeAll
     static void beforeAll() {{
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }}
 
     @Test
@@ -1962,16 +1968,14 @@ public class RecipeValidationTest {{
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = (
-            f"com.example.{self.mod_id}.test"
-        )
+        package_name = f"com.example.{self.mod_id}.test"
 
         test_content = f"""package {package_name};
 
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.SharedConstants;
-import net.minecraft.Bootstrap;
+import net.minecraft.server.Bootstrap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -1988,8 +1992,8 @@ public class ModIntegrationTest {{
 
     @BeforeAll
     static void beforeAll() {{
-        SharedConstants.createGameVersion();
-        Bootstrap.initialize();
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
     }}
 
     @Test
@@ -2011,7 +2015,7 @@ public class ModIntegrationTest {{
             if ":" in item_id:
                 namespace, path = item_id.split(":", 1)
                 test_content += f'''
-        Assertions.assertTrue(Registries.ITEM.containsId(Identifier.of("{namespace}", "{path}")),
+        Assertions.assertTrue(BuiltInRegistries.ITEM.containsKey(Identifier.fromNamespaceAndPath("{namespace}", "{path}")),
             "{item.name} should be registered in item registry");
 '''
 
@@ -2029,7 +2033,7 @@ public class ModIntegrationTest {{
             if ":" in block_id:
                 namespace, path = block_id.split(":", 1)
                 test_content += f'''
-        Assertions.assertTrue(Registries.BLOCK.containsId(Identifier.of("{namespace}", "{path}")),
+        Assertions.assertTrue(BuiltInRegistries.BLOCK.containsKey(Identifier.fromNamespaceAndPath("{namespace}", "{path}")),
             "{block.name} should be registered in block registry");
 '''
 
@@ -2122,20 +2126,18 @@ public class ModIntegrationTest {{
     def _generate_server_game_test(self, gametest_dir: str):
         """Generate server-side game tests."""
         package_name = f"com.example.{self.mod_id}"
-        class_name = (
-            f"{self.mod_id.replace('-', '_').title()}ServerTest"
-        )
+        class_name = f"{self.mod_id.replace('-', '_').title()}ServerTest"
 
         server_test_content = f"""package {package_name};
 
-import net.minecraft.block.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.test.GameTest;
-import net.minecraft.test.TestContext;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.resources.Identifier;
+import net.minecraft.core.BlockPos;
 
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 
@@ -2145,8 +2147,8 @@ import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
  */
 public class {class_name} implements FabricGameTest {{
 
-    @GameTest(templateName = EMPTY_STRUCTURE, timeoutTicks = 200)
-    public void testItemFunctionality(TestContext context) {{
+    @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = 200)
+    public void testItemFunctionality(GameTestHelper context) {{
         // Test that all mod items work in game context
 """
 
@@ -2160,7 +2162,7 @@ public class {class_name} implements FabricGameTest {{
         
         // Test {item.name}
         ItemStack {safe_name}_stack = new ItemStack(
-            Registries.ITEM.get(Identifier.of("{namespace}", "{path}")), 1
+            BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}")), 1
         );
         context.assertTrue(!{safe_name}_stack.isEmpty(), "{item.name} should create valid ItemStack");
 '''
@@ -2168,7 +2170,7 @@ public class {class_name} implements FabricGameTest {{
                 # Add food-specific tests
                 if hasattr(item, "nutrition"):
                     server_test_content += f'''
-        context.assertTrue({safe_name}_stack.isFood(), "{item.name} should be edible");
+        context.assertTrue({safe_name}_stack.has(net.minecraft.core.component.DataComponents.FOOD), "{item.name} should be edible");
 '''
 
         server_test_content += """
@@ -2176,8 +2178,8 @@ public class {class_name} implements FabricGameTest {{
         context.complete();
     }
 
-    @GameTest(templateName = EMPTY_STRUCTURE, timeoutTicks = 300)
-    public void testBlockPlacement(TestContext context) {
+    @GameTest(template = EMPTY_STRUCTURE, timeoutTicks = 300)
+    public void testBlockPlacement(GameTestHelper context) {
         // Test block placement and interaction
         BlockPos testPos = new BlockPos(1, 1, 1);
         
@@ -2194,15 +2196,15 @@ public class {class_name} implements FabricGameTest {{
         
         // Test {block.name}
         context.setBlockState(testPos, 
-            Registries.BLOCK.get(Identifier.of("{namespace}", "{path}")).getDefaultState()
+            BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}")).defaultBlockState()
         );
         context.expectBlock(
-            Registries.BLOCK.get(Identifier.of("{namespace}", "{path}")), 
+            BuiltInRegistries.BLOCK.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}")), 
             testPos
         );
         
         // Test block can be broken
-        context.setBlockState(testPos, Blocks.AIR.getDefaultState());
+        context.setBlockState(testPos, Blocks.AIR.defaultBlockState());
         context.expectBlock(Blocks.AIR, testPos);
 '''
 
@@ -2221,9 +2223,7 @@ public class {class_name} implements FabricGameTest {{
     def _generate_client_game_test(self, gametest_dir: str):
         """Generate client-side game tests."""
         package_name = f"com.example.{self.mod_id}"
-        class_name = (
-            f"{self.mod_id.replace('-', '_').title()}ClientTest"
-        )
+        class_name = f"{self.mod_id.replace('-', '_').title()}ClientTest"
 
         client_test_content = f'''package {package_name};
 
@@ -2269,21 +2269,21 @@ public class {class_name} implements FabricClientGameTest {{
 
     def _has_game_tests(self, project_dir: str) -> bool:
         """Check if game test files exist in the project.
-        
+
         Args:
             project_dir (str): The root directory of the mod project.
-            
+
         Returns:
             bool: True if game test files are found, False otherwise.
         """
         gametest_java_dir = os.path.join(project_dir, "src", "gametest", "java")
         if not os.path.exists(gametest_java_dir):
             return False
-            
+
         # Check for any .java files in the gametest directory
         for root, dirs, files in os.walk(gametest_java_dir):
             for file in files:
-                if file.endswith('.java'):
+                if file.endswith(".java"):
                     return True
-        
+
         return False

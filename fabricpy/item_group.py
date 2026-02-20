@@ -2,7 +2,7 @@
 """Vanilla creative tab identifiers for Minecraft Fabric mods.
 
 This module provides string constants for all vanilla Minecraft creative tabs
-(ItemGroups). These constants match the names used in net.minecraft.item.ItemGroups
+(CreativeModeTabs). These constants match the names used in net.minecraft.world.item.CreativeModeTabs
 and can be used when assigning items and blocks to creative tabs.
 
 The constants provided here represent the standard creative tabs available in
@@ -37,29 +37,29 @@ Attributes:
     SPAWN_EGGS (str): Spawn eggs for entities.
 """
 
-BUILDING_BLOCKS = "BUILDING_BLOCKS"
+BUILDING_BLOCKS = "building_blocks"
 """str: Creative tab for building blocks and construction materials."""
 
-NATURAL = "NATURAL"
+NATURAL = "natural_blocks"
 """str: Creative tab for natural blocks like stone, dirt, and ores."""
 
-FUNCTIONAL = "FUNCTIONAL"
+FUNCTIONAL = "functional_blocks"
 """str: Creative tab for functional blocks like crafting tables and furnaces."""
 
-REDSTONE = "REDSTONE"
+REDSTONE = "redstone_blocks"
 """str: Creative tab for redstone components and mechanisms."""
 
-TOOLS = "TOOLS"
+TOOLS = "tools_and_utilities"
 """str: Creative tab for tools and utility items."""
 
-COMBAT = "COMBAT"
+COMBAT = "combat"
 """str: Creative tab for weapons, armor, and combat-related items."""
 
-FOOD_AND_DRINK = "FOOD_AND_DRINK"
+FOOD_AND_DRINK = "food_and_drinks"
 """str: Creative tab for food items and potions."""
 
-INGREDIENTS = "INGREDIENTS"
+INGREDIENTS = "ingredients"
 """str: Creative tab for crafting ingredients and materials."""
 
-SPAWN_EGGS = "SPAWN_EGGS"
+SPAWN_EGGS = "spawn_eggs"
 """str: Creative tab for spawn eggs for entities."""

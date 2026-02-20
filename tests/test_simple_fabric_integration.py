@@ -2,9 +2,9 @@
 Simple test to verify Fabric testing integration works.
 """
 
-import unittest
-import tempfile
 import os
+import tempfile
+import unittest
 
 from fabricpy import ModConfig
 
@@ -24,9 +24,9 @@ class TestFabricTestingIntegration(unittest.TestCase):
                 project_dir=os.path.join(temp_dir, "test-mod"),
                 enable_testing=True,
                 generate_unit_tests=True,
-                generate_game_tests=True
+                generate_game_tests=True,
             )
-            
+
             # Verify testing flags are set
             self.assertTrue(mod.enable_testing)
             self.assertTrue(mod.generate_unit_tests)
@@ -38,13 +38,13 @@ class TestFabricTestingIntegration(unittest.TestCase):
             mod = ModConfig(
                 mod_id="test_mod_no_testing",
                 name="Test Mod No Testing",
-                version="1.0.0", 
+                version="1.0.0",
                 description="A test mod without testing",
                 authors=["test"],
                 project_dir=os.path.join(temp_dir, "test-mod-no-testing"),
-                enable_testing=False
+                enable_testing=False,
             )
-            
+
             # Verify testing is disabled
             self.assertFalse(mod.enable_testing)
 
@@ -55,14 +55,14 @@ class TestFabricTestingIntegration(unittest.TestCase):
             name="Test Mod",
             version="1.0.0",
             description="A test mod",
-            authors=["test"]
+            authors=["test"],
         )
-        
+
         # Verify testing methods exist
-        self.assertTrue(hasattr(mod, 'setup_fabric_testing'))
-        self.assertTrue(hasattr(mod, 'generate_fabric_unit_tests'))
-        self.assertTrue(hasattr(mod, 'generate_fabric_game_tests'))
+        self.assertTrue(hasattr(mod, "setup_fabric_testing"))
+        self.assertTrue(hasattr(mod, "generate_fabric_unit_tests"))
+        self.assertTrue(hasattr(mod, "generate_fabric_game_tests"))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

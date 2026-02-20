@@ -11,6 +11,7 @@ Example:
     ...     left_click_event=send_message("Hello!")
     ... )
 """
+
 from __future__ import annotations
 
 __all__ = ["send_message", "send_action_bar_message"]
@@ -27,7 +28,7 @@ def send_message(message: str, player_var: str = "player") -> str:
         str: Java statement that sends the message.
     """
     escaped = message.replace('"', '\\"')
-    return f'{player_var}.sendMessage(Text.literal("{escaped}"), false);'
+    return f'{player_var}.sendSystemMessage(Component.literal("{escaped}"));'
 
 
 def send_action_bar_message(message: str, player_var: str = "player") -> str:
@@ -41,4 +42,4 @@ def send_action_bar_message(message: str, player_var: str = "player") -> str:
         str: Java statement that sends the message to the action bar.
     """
     escaped = message.replace('"', '\\"')
-    return f'{player_var}.sendMessage(Text.literal("{escaped}"), true);'
+    return f'{player_var}.displayClientMessage(Component.literal("{escaped}"), true);'
