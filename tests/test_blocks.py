@@ -139,7 +139,7 @@ class TestBlock(unittest.TestCase):
         snippet = send_message("Hello")
         self.assertEqual(
             snippet,
-            'player.sendSystemMessage(Component.literal("Hello"));',
+            'player.displayClientMessage(Component.literal("Hello"), false);',
         )
 
     def test_send_action_bar_message_helper(self):

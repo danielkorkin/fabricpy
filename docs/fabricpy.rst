@@ -62,6 +62,14 @@ fabricpy.recipejson module
    :show-inheritance:
    :undoc-members:
 
+fabricpy.loottable module
+-------------------------
+
+.. automodule:: fabricpy.loottable
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
 fabricpy.item\_group module
 ---------------------------
 

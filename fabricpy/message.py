@@ -28,7 +28,7 @@ def send_message(message: str, player_var: str = "player") -> str:
         str: Java statement that sends the message.
     """
     escaped = message.replace('"', '\\"')
-    return f'{player_var}.sendSystemMessage(Component.literal("{escaped}"));'
+    return f'{player_var}.displayClientMessage(Component.literal("{escaped}"), false);'
 
 
 def send_action_bar_message(message: str, player_var: str = "player") -> str:

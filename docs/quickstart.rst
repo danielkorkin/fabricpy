@@ -98,7 +98,8 @@ Here's a complete example of creating a simple mod:
    ruby_block = fabricpy.Block(
        id="tutorial_mod:ruby_block", 
        name="Ruby Block",
-       item_group=fabricpy.item_group.BUILDING_BLOCKS
+       item_group=fabricpy.item_group.BUILDING_BLOCKS,
+       loot_table=fabricpy.LootTable.drops_self("tutorial_mod:ruby_block"),
    )
 
    # Register all items and blocks
@@ -116,6 +117,7 @@ Next Steps
 
 - Learn about creating recipes (see the RecipeJson class in the API reference)
 - Use the `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ to easily create crafting recipe JSON files with a visual interface
+- Define loot tables for your blocks (see the :doc:`guides/loot-tables` guide)
 - Understand custom creative tabs (see the ItemGroup class in the API reference)
 - Explore the :doc:`complete API reference <api>`
 
@@ -124,6 +126,30 @@ Examples
 
 Example scripts can be found in the ``examples`` directory.
 
+.. literalinclude:: ../examples/basic_mod.py
+   :caption: Minimal mod — one item, one block
+   :language: python
+
+.. literalinclude:: ../examples/food_items.py
+   :caption: Food items with nutrition, smelting, and always\_edible
+   :language: python
+
+.. literalinclude:: ../examples/blocks_and_recipes.py
+   :caption: Blocks with recipes, textures, and click events
+   :language: python
+
+.. literalinclude:: ../examples/custom_item_group.py
+   :caption: Custom creative tabs
+   :language: python
+
 .. literalinclude:: ../examples/tool_item.py
    :caption: Defining a custom ToolItem
+   :language: python
+
+.. literalinclude:: ../examples/loot_table.py
+   :caption: Loot table patterns (self-drops, fortune, silk touch, entity & chest)
+   :language: python
+
+.. literalinclude:: ../examples/full_mod.py
+   :caption: Complete mod — all features combined
    :language: python

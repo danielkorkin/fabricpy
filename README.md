@@ -11,6 +11,7 @@ Python Library that allows you to create Fabric Minecraft mods in Python! Write 
 🧪 **Built-in Testing**: Automatically generates unit tests and game tests  
 🎨 **Custom Creative Tabs**: Create your own creative inventory tabs  
 📝 **Recipe Support**: Define crafting recipes with JSON  
+🎲 **Loot Tables**: Native loot table support with builder methods for common drop patterns  
 🚀 **One-Click Building**: Compile and run your mod directly from Python  
 
 ## Installation
@@ -98,7 +99,8 @@ mod.registerFoodItem(apple)
 block = fabricpy.Block(
     id="mymod:ruby_block",
     name="Ruby Block",
-    item_group=fabricpy.item_group.BUILDING_BLOCKS
+    item_group=fabricpy.item_group.BUILDING_BLOCKS,
+    loot_table=fabricpy.LootTable.drops_self("mymod:ruby_block")
 )
 mod.registerBlock(block)
 
@@ -110,7 +112,16 @@ mod.run()
 ## Examples
 
 Additional example scripts can be found in the [`examples`](examples/) directory.
-- `tool_item.py` demonstrates defining and registering a custom `ToolItem`.
+
+| Script | What it shows |
+|---|---|
+| `basic_mod.py` | Minimal mod — one item, one block, mod config |
+| `food_items.py` | Food items with nutrition, smelting recipes, `always_edible` |
+| `blocks_and_recipes.py` | Blocks with recipes, textures, click events, subclasses |
+| `custom_item_group.py` | Custom creative tabs and assigning items to them |
+| `tool_item.py` | Defining and registering a custom `ToolItem` |
+| `loot_table.py` | Loot table patterns: self-drops, fortune, silk touch, entity & chest loot |
+| `full_mod.py` | Complete mod tying together every library feature |
 
 ## Advanced Features
 
@@ -154,6 +165,45 @@ apple = fabricpy.FoodItem(
 ```
 
 **💡 Tip**: Use the [Crafting Recipe Generator](https://crafting.thedestruc7i0n.ca/) to easily create crafting recipe JSON files with a visual interface!
+
+### Loot Tables
+
+```python
+# Block that drops itself
+block = fabricpy.Block(
+    id="mymod:ruby_block",
+    name="Ruby Block",
+    loot_table=fabricpy.LootTable.drops_self("mymod:ruby_block")
+)
+
+# Ore with fortune-affected drops
+ore = fabricpy.Block(
+    id="mymod:ruby_ore",
+    name="Ruby Ore",
+    loot_table=fabricpy.LootTable.drops_with_fortune(
+        "mymod:ruby_ore", "mymod:ruby",
+        min_count=1, max_count=2
+    )
+)
+
+# Silk-touch-only glass
+glass = fabricpy.Block(
+    id="mymod:crystal_glass",
+    name="Crystal Glass",
+    loot_table=fabricpy.LootTable.drops_with_silk_touch("mymod:crystal_glass")
+)
+
+# Entity loot table
+from fabricpy import LootPool, LootTable
+
+zombie_loot = LootTable.entity([
+    LootPool()
+        .rolls(1)
+        .entry("mymod:fang", weight=3)
+        .entry("mymod:eye", weight=1)
+])
+mod.registerLootTable("custom_zombie", zombie_loot)
+```
 
 ### Testing Integration
 

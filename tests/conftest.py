@@ -15,6 +15,8 @@ from fabricpy import (
     FoodItem,
     Item,
     ItemGroup,
+    LootPool,
+    LootTable,
     ModConfig,
     RecipeJson,
     ToolItem,
@@ -98,3 +100,20 @@ def sample_block():
 def sample_item_group():
     """A custom item group."""
     return ItemGroup(id="testmod_weapons", name="Testmod Weapons")
+
+
+@pytest.fixture
+def sample_loot_table():
+    """A basic block loot table that drops itself."""
+    return LootTable.drops_self("testmod:marble_block")
+
+
+@pytest.fixture
+def sample_fortune_loot_table():
+    """A fortune-affected ore loot table."""
+    return LootTable.drops_with_fortune(
+        "testmod:ruby_ore",
+        "testmod:ruby",
+        min_count=1,
+        max_count=2,
+    )

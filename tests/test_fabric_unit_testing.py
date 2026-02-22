@@ -1093,9 +1093,10 @@ class TestMessageHelpers:
 
     def test_send_message(self):
         result = message.send_message("Hello World")
-        assert "sendSystemMessage" in result
+        assert "displayClientMessage" in result
         assert "Hello World" in result
         assert "Component.literal" in result
+        assert "false" in result
 
     def test_send_action_bar_message(self):
         result = message.send_action_bar_message("Action!")

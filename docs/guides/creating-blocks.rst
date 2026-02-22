@@ -32,6 +32,7 @@ Optional Parameters
 * **block_texture_path**: Path to the block's texture file
 * **inventory_texture_path**: Path to the block's inventory item texture file
 * **recipe**: A RecipeJson object for crafting recipes
+* **loot_table**: A LootTable object controlling what the block drops when broken
 * **max_stack_size**: Maximum stack size for the block item (default: 64)
 * Override :py:meth:`fabricpy.block.Block.on_left_click` or
   :py:meth:`fabricpy.block.Block.on_right_click` in a subclass to run Java code
@@ -61,12 +62,16 @@ Ore Block
 
 .. code-block:: python
 
-   # Ore block with custom texture
+   # Ore block with custom texture and fortune-affected loot table
    ruby_ore = fabricpy.Block(
        id="mymod:ruby_ore",
        name="Ruby Ore",
        block_texture_path="textures/blocks/ruby_ore.png", 
-       item_group=fabricpy.item_group.NATURAL
+       item_group=fabricpy.item_group.NATURAL,
+       loot_table=fabricpy.LootTable.drops_with_fortune(
+           "mymod:ruby_ore", "mymod:ruby",
+           min_count=1, max_count=2,
+       )
    )
 
 Storage Block
@@ -91,7 +96,8 @@ Storage Block
    ruby_storage = fabricpy.Block(
        id="mymod:ruby_block",
        name="Block of Ruby",
-       recipe=recipe
+       recipe=recipe,
+       loot_table=fabricpy.LootTable.drops_self("mymod:ruby_block"),
    )
 
 Machine Block
@@ -128,6 +134,40 @@ Block with Click Events
    event_block = EventBlock()
 
 See :file:`examples/message_block.py` for a runnable example.
+
+Block with Loot Table
+~~~~~~~~~~~~~~~~~~~~~
+
+Loot tables control what drops when a block is broken. Use the ``loot_table``
+parameter to attach one:
+
+.. code-block:: python
+
+   # Self-dropping block (most common)
+   simple_block = fabricpy.Block(
+       id="mymod:marble",
+       name="Marble",
+       loot_table=fabricpy.LootTable.drops_self("mymod:marble"),
+   )
+
+   # Ore with fortune scaling
+   ore = fabricpy.Block(
+       id="mymod:ruby_ore",
+       name="Ruby Ore",
+       loot_table=fabricpy.LootTable.drops_with_fortune(
+           "mymod:ruby_ore", "mymod:ruby",
+           min_count=1, max_count=2,
+       ),
+   )
+
+   # Glass-style silk touch
+   glass = fabricpy.Block(
+       id="mymod:crystal_glass",
+       name="Crystal Glass",
+       loot_table=fabricpy.LootTable.drops_with_silk_touch("mymod:crystal_glass"),
+   )
+
+See :doc:`loot-tables` for the full guide on all available loot table patterns.
 
 Block Categories by Use Case
 ----------------------------
@@ -222,7 +262,11 @@ Here's a complete mod with various block types:
            id="blocks_mod:titanium_ore",
            name="Titanium Ore",
            block_texture_path="textures/blocks/titanium_ore.png",
-           item_group=fabricpy.item_group.NATURAL
+           item_group=fabricpy.item_group.NATURAL,
+           loot_table=fabricpy.LootTable.drops_with_fortune(
+               "blocks_mod:titanium_ore", "blocks_mod:raw_titanium",
+               min_count=1, max_count=2,
+           )
        ),
        
        # Storage block  
@@ -230,7 +274,8 @@ Here's a complete mod with various block types:
            id="blocks_mod:titanium_block",
            name="Titanium Block",
            block_texture_path="textures/blocks/titanium_block.png",
-           item_group=fabricpy.item_group.BUILDING_BLOCKS
+           item_group=fabricpy.item_group.BUILDING_BLOCKS,
+           loot_table=fabricpy.LootTable.drops_self("blocks_mod:titanium_block"),
        ),
        
        # Light source
@@ -238,7 +283,7 @@ Here's a complete mod with various block types:
            id="blocks_mod:crystal_lamp",
            name="Crystal Lamp",
            block_texture_path="textures/blocks/crystal_lamp.png",
-           item_group=fabricpy.item_group.DECORATIONS
+           item_group=fabricpy.item_group.FUNCTIONAL
        ),
        
        # Decorative
@@ -317,6 +362,7 @@ Common Issues
 Next Steps
 ----------
 
+* Learn about :doc:`loot-tables` to control what your blocks drop
 * Learn about :doc:`custom-recipes` to add block crafting and smelting recipes
 * Explore :doc:`creating-items` for tools that interact with blocks
 * See :doc:`vanilla-item-groups` for appropriate block categorization

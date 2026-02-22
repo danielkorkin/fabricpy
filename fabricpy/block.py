@@ -32,6 +32,12 @@ class Block:
             Typically BUILDING_BLOCKS for most blocks.
         left_click_event: Java code to execute when the block is left clicked.
         right_click_event: Java code to execute when the block is right clicked.
+        loot_table: Loot table definition controlling what the block drops when
+            broken. Can be a LootTable instance or None (no custom loot table).
+        tool_type: The tool required to mine this block and obtain drops.
+            One of ``"pickaxe"``, ``"axe"``, ``"shovel"``, ``"hoe"``,
+            or ``None`` (no specific tool required — drops with any tool).
+            Defaults to ``None``.
 
     Attributes:
         id (str): The registry identifier for the block.
@@ -43,6 +49,7 @@ class Block:
         item_group (ItemGroup | str): Creative tab assignment for the block item.
         left_click_event (str | None): Java code executed on left click.
         right_click_event (str | None): Java code executed on right click.
+        loot_table (LootTable | None): Loot table for block drops.
 
     Example:
         Creating a basic block::
@@ -90,6 +97,8 @@ class Block:
         item_group: object | str | None = None,
         left_click_event: str | None = None,
         right_click_event: str | None = None,
+        loot_table: object | None = None,  # instance of LootTable or None
+        tool_type: str | None = None,  # "pickaxe", "axe", "shovel", "hoe", or None
     ):
         """Initialize a new Block instance.
 
@@ -117,6 +126,8 @@ class Block:
         self.item_group = item_group
         self.left_click_event = left_click_event
         self.right_click_event = right_click_event
+        self.loot_table = loot_table
+        self.tool_type = tool_type
 
     # ------------------------------------------------------------------ #
     # event hooks                                                        #

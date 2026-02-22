@@ -11,6 +11,7 @@ This section contains comprehensive guides for using fabricpy to create Minecraf
    guides/creating-food-items
    guides/creating-blocks
    guides/custom-recipes
+   guides/loot-tables
    guides/custom-item-groups
    guides/vanilla-item-groups
    guides/sending-messages

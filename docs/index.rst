@@ -14,6 +14,7 @@ Features
 * **Item Registration**: Easy creation of custom items, tools, and food items
 * **Block Registration**: Simple block creation with automatic BlockItem generation  
 * **Recipe Support**: Built-in recipe JSON handling for crafting, smelting, etc.
+* **Loot Tables**: Native loot table support with builder methods for common drop patterns
 * **Creative Tabs**: Support for both vanilla and custom creative inventory tabs
 * **Automatic Compilation**: Generates complete Fabric mod projects from Python code
 * **Google Docstrings**: Comprehensive documentation with examples

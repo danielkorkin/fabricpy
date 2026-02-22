@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2025-06-12
+
+### Added
+- **Loot Tables**: Native loot table support via `LootTable` and `LootPool` classes
+- `LootTable.drops_self()` — block drops itself when broken
+- `LootTable.drops_item()` — block drops a different item (fixed or ranged count)
+- `LootTable.drops_nothing()` — block drops nothing
+- `LootTable.drops_with_silk_touch()` — silk-touch-sensitive drops (glass/ore style)
+- `LootTable.drops_with_fortune()` — fortune-affected ore-style drops
+- `LootTable.entity()` / `LootTable.chest()` — entity and chest loot tables
+- `LootPool` fluent builder with `.rolls()`, `.entry()`, `.condition()`, `.function()` chaining
+- `Block(loot_table=...)` parameter for attaching loot tables to blocks
+- `ModConfig.registerLootTable()` for standalone entity/chest loot tables
+- Automatic loot table JSON writing during `mod.compile()`
+- Comprehensive test suite (53 tests) for all loot table functionality
+- Loot table documentation guide with examples for all drop patterns
+- Example script `examples/loot_table.py` demonstrating common patterns
+
+### Changed
+- Updated Block class to accept optional `loot_table` parameter
+- `ModConfig.compile()` now writes loot table JSON files to `data/<mod_id>/loot_table/`
+
+### Documentation
+- New "Loot Tables" guide in docs with complete API walkthrough
+- Updated Block guide with loot table examples for ores and storage blocks
+- Updated quickstart guide with loot table usage
+- Updated README with loot table feature and examples
+- Added `fabricpy.loottable` module to API reference
+
 ## [0.1.3] - 2025-06-11
 
 ### Fixed

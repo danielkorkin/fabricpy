@@ -12,6 +12,7 @@ This module exposes all the main classes and utilities needed to create Fabric m
 - Block: Block registration class
 - ItemGroup: Custom creative tab creation
 - RecipeJson: Recipe definition helper
+- LootTable/LootPool: Loot table definition and builder classes
 - item_group: Vanilla creative tab constants
 
 Example:
@@ -48,6 +49,7 @@ from .__version__ import __version__
 from .block import Block
 from .fooditem import FoodItem
 from .item import Item
+from .loottable import LootPool, LootTable
 from .toolitem import ToolItem
 from .itemgroup import ItemGroup
 from .modconfig import ModConfig
@@ -60,7 +62,9 @@ __all__ = [
     "ToolItem",
     "Block",
     "ItemGroup",
-    "RecipeJson",  # ← expose
+    "RecipeJson",
+    "LootTable",
+    "LootPool",
     "item_group",
     "message",
     "__version__",

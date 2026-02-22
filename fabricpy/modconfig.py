@@ -150,6 +150,7 @@ class ModConfig:
 
         self.registered_items: List = []  # Item or FoodItem
         self.registered_blocks: List = []  # Block
+        self.registered_loot_tables: Dict[str, "LootTable"] = {}  # name → LootTable
 
     # public helpers --------------------------------------------------- #
 
@@ -206,6 +207,32 @@ class ModConfig:
                 mod.registerBlock(block)
         """
         self.registered_blocks.append(block)
+
+    def registerLootTable(self, name: str, loot_table) -> None:  # noqa: N802
+        """Register a standalone loot table (entity / chest / custom).
+
+        Block loot tables should be attached directly to the Block via its
+        ``loot_table`` attribute.  Use this method for loot tables that are
+        **not** tied to a specific block, such as entity drops, chest loot,
+        or gameplay loot tables.
+
+        Args:
+            name (str): Filename stem for the loot table (e.g. ``"zombie"``).
+                The file will be written to
+                ``data/<mod_id>/loot_table/<category>/<name>.json``.
+            loot_table: A :class:`~fabricpy.loottable.LootTable` instance.
+
+        Example:
+            Registering an entity loot table::
+
+                from fabricpy import LootTable, LootPool
+
+                lt = LootTable.entity([
+                    LootPool().rolls(1).entry("mymod:fang")
+                ])
+                mod.registerLootTable("custom_zombie", lt)
+        """
+        self.registered_loot_tables[name] = loot_table
 
     # ------------------------------------------------------------------ #
     # helper for creating valid Java identifiers                        #
@@ -319,6 +346,13 @@ class ModConfig:
             self.update_mod_initializer_blocks(self.project_dir, block_pkg)
             self.copy_block_textures_and_generate_models(self.project_dir, self.mod_id)
             self.update_block_lang_file(self.project_dir, self.mod_id)
+
+        # 4b) loot-table JSONs -------------------------------------------
+        self.write_loot_table_files(self.project_dir, self.mod_id)
+
+        # 4c) mineable / tool tags ----------------------------------------
+        if self.registered_blocks:
+            self.write_block_tags(self.project_dir, self.mod_id)
 
         # 5) Fabric testing integration ---------------------------------
         if self.enable_testing:
@@ -505,6 +539,119 @@ class ModConfig:
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(r.text)
             print(f"  ✔ wrote recipe → {os.path.relpath(path, project_dir)}")
+
+    # ------------------------------------------------------------------ #
+    # loot-table JSON writer                                             #
+    # ------------------------------------------------------------------ #
+
+    def write_loot_table_files(self, project_dir: str, mod_id: str) -> None:
+        """Write loot-table JSON files for blocks and standalone registrations.
+
+        Scans all registered blocks for attached ``loot_table`` attributes **and**
+        all entries added via :meth:`registerLootTable`, then writes them as JSON
+        files under ``data/<mod_id>/loot_table/<category>/``.
+
+        For blocks the filename is derived from the block ID.  For standalone
+        tables the filename is the *name* passed to :meth:`registerLootTable`.
+
+        Args:
+            project_dir (str): Root directory of the mod project.
+            mod_id (str): The mod's identifier, used in the data directory path.
+
+        Note:
+            This method is called automatically during :meth:`compile`.
+
+        Example:
+            Writing loot tables manually (usually not needed)::
+
+                mod.write_loot_table_files("my-mod-project", "mymod")
+        """
+        # collect (name, LootTable, category) triples
+        entries: List[tuple] = []
+
+        for block in self.registered_blocks:
+            lt = getattr(block, "loot_table", None)
+            if lt is None:
+                continue
+            block_name = block.id.split(":", 1)[-1] if ":" in block.id else block.id
+            entries.append((block_name, lt))
+
+        for name, lt in self.registered_loot_tables.items():
+            entries.append((name, lt))
+
+        if not entries:
+            return
+
+        for name, lt in entries:
+            category = getattr(lt, "category", "blocks")
+            base = os.path.join(
+                project_dir,
+                "src",
+                "main",
+                "resources",
+                "data",
+                mod_id,
+                "loot_table",
+                category,
+            )
+            os.makedirs(base, exist_ok=True)
+
+            filename = name + ".json"
+            path = os.path.join(base, filename)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(lt.text)
+            print(f"  ✔ wrote loot table → {os.path.relpath(path, project_dir)}")
+
+    # ── block tags (mineable / tool) ──────────────────────────────────── #
+
+    def write_block_tags(self, project_dir: str, mod_id: str) -> None:
+        """Write mineable block-tag JSON files so blocks drop loot correctly.
+
+        For every registered block that specifies a ``tool_type`` (e.g.
+        ``"pickaxe"``), the block is added to
+        ``data/minecraft/tags/block/mineable/<tool>.json``.
+
+        Args:
+            project_dir: Root directory of the mod project.
+            mod_id: The mod's identifier.
+        """
+        tool_map: Dict[str, List[str]] = defaultdict(list)
+        for blk in self.registered_blocks:
+            tool = getattr(blk, "tool_type", None)
+            if tool:
+                tool_map[tool].append(blk.id)
+
+        if not tool_map:
+            return
+
+        for tool, block_ids in tool_map.items():
+            tag_dir = os.path.join(
+                project_dir,
+                "src",
+                "main",
+                "resources",
+                "data",
+                "minecraft",
+                "tags",
+                "block",
+                "mineable",
+            )
+            os.makedirs(tag_dir, exist_ok=True)
+            tag_path = os.path.join(tag_dir, f"{tool}.json")
+
+            # Merge with an existing tag file if present
+            existing_values: List[str] = []
+            if os.path.exists(tag_path):
+                with open(tag_path, "r", encoding="utf-8") as fh:
+                    existing = json.load(fh)
+                    existing_values = existing.get("values", [])
+
+            merged = list(dict.fromkeys(existing_values + block_ids))
+            tag_data = {"replace": False, "values": merged}
+
+            with open(tag_path, "w", encoding="utf-8") as fh:
+                json.dump(tag_data, fh, indent=2)
+            print(f"  ✔ wrote block tag  → {os.path.relpath(tag_path, project_dir)}")
 
     # ================================================================== #
     #                          ITEMS  &  FOOD                            #
@@ -1243,9 +1390,12 @@ public class CustomToolItem extends Item {{
             const = self._to_java_constant(blk.id)
             # Extract just the path part if the ID is namespaced
             block_path = blk.id.split(":", 1)[-1]
+            props = "BlockBehaviour.Properties.ofFullCopy(Blocks.STONE)"
+            if getattr(blk, "tool_type", None):
+                props += ".requiresCorrectToolForDrops()"
             L.append(
                 f'    public static final Block {const} = register("{block_path}", '
-                f"CustomBlock::new, BlockBehaviour.Properties.ofFullCopy(Blocks.STONE).requiresCorrectToolForDrops(), true);"
+                f"CustomBlock::new, {props}, true);"
             )
         L.append("")
         L.append(

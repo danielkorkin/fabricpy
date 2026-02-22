@@ -30,20 +30,14 @@ extensions = [
     "sphinx.ext.viewcode",  # Add links to highlighted source code
     "sphinx.ext.autosummary",  # Generate summary tables of modules/classes
     "sphinx.ext.intersphinx",  # Link to other project's documentation
-    "sphinx_llms_txt"  # Custom extension for LLM-generated text
+    "sphinx_llms_txt",  # Custom extension for LLM-generated text
 ]
 
 # sphinx-llms-txt configuration
-llms_txt_exclude = [
-    "search",
-    "genindex", 
-    "py-modindex"
-]
+llms_txt_exclude = ["search", "genindex", "py-modindex"]
 
 # Configure sphinx-llms-txt to handle guide files correctly
-llms_txt_include_patterns = [
-    "**/*.rst"
-]
+llms_txt_include_patterns = ["**/*.rst"]
 
 # Napoleon settings for Google-style docstrings
 napoleon_google_docstring = True
