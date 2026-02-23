@@ -1406,11 +1406,15 @@ public class CustomToolItem extends Item {{
         )
         left_handlers = {blk: blk.on_left_click() for blk in self.registered_blocks}
         right_handlers = {blk: blk.on_right_click() for blk in self.registered_blocks}
+        break_handlers = {blk: blk.on_break() for blk in self.registered_blocks}
         has_left_click = any(left_handlers.values())
         has_right_click = any(right_handlers.values())
+        has_break = any(break_handlers.values())
         needs_text = any(
             "Component.literal" in ev
-            for ev in list(left_handlers.values()) + list(right_handlers.values())
+            for ev in list(left_handlers.values())
+            + list(right_handlers.values())
+            + list(break_handlers.values())
             if ev
         )
         L: List[str] = []
@@ -1434,6 +1438,10 @@ public class CustomToolItem extends Item {{
             L.append("import net.fabricmc.fabric.api.event.player.AttackBlockCallback;")
         if has_right_click:
             L.append("import net.fabricmc.fabric.api.event.player.UseBlockCallback;")
+        if has_break:
+            L.append(
+                "import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;"
+            )
         if has_left_click or has_right_click:
             L.append("import net.minecraft.world.InteractionResult;")
         has_mining_speeds = any(
@@ -1545,6 +1553,20 @@ public class CustomToolItem extends Item {{
                     L.append("                return InteractionResult.SUCCESS;")
                     L.append("            }")
             L.append("            return InteractionResult.PASS;")
+            L.append("        });")
+        if has_break:
+            L.append(
+                "        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {"
+            )
+            for blk, code in break_handlers.items():
+                if code:
+                    const = self._to_java_constant(blk.id)
+                    L.append(
+                        f"            if (state.getBlock() == {const}) {{",
+                    )
+                    for line in code.splitlines():
+                        L.append(f"                {line}")
+                    L.append("            }")
             L.append("        });")
         L.append("    }")
         L.append("}")

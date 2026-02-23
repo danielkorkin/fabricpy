@@ -27,6 +27,7 @@ class TestBlock(unittest.TestCase):
         self.assertIsNone(block.item_group)  # default
         self.assertIsNone(block.on_left_click())
         self.assertIsNone(block.on_right_click())
+        self.assertIsNone(block.on_break())
 
     def test_block_creation_full_parameters(self):
         """Test creating a block with all parameters."""
@@ -133,6 +134,82 @@ class TestBlock(unittest.TestCase):
         self.assertIn('Component.literal("right")', src)
         self.assertIn("true);", src)
         self.assertIn("import net.minecraft.network.chat.Component;", src)
+
+    def test_block_break_event_handler(self):
+        """Ensure on_break handlers are written to Java with PlayerBlockBreakEvents."""
+
+        class BreakBlock(Block):
+            def __init__(self):
+                super().__init__(id="testmod:break_block", name="Break Block")
+
+            def on_break(self):
+                return 'System.out.println("Block broken!");'
+
+        block = BreakBlock()
+        mod = fabricpy.ModConfig(
+            mod_id="testmod",
+            name="Test Mod",
+            version="1.0.0",
+            description="desc",
+            authors=["Tester"],
+        )
+        mod.registerBlock(block)
+        src = mod._tutorial_blocks_src("com.example.testmod.blocks")
+        self.assertIn("PlayerBlockBreakEvents.AFTER.register", src)
+        self.assertIn("state.getBlock() == TESTMOD_BREAK_BLOCK", src)
+        self.assertIn('System.out.println("Block broken!");', src)
+        self.assertIn(
+            "import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;",
+            src,
+        )
+
+    def test_block_break_event_declarative(self):
+        """Test on_break via constructor break_event parameter."""
+        block = Block(
+            id="testmod:ore",
+            name="Test Ore",
+            break_event='System.out.println("Ore mined!");',
+        )
+        self.assertEqual(block.on_break(), 'System.out.println("Ore mined!");')
+
+    def test_block_break_event_default_none(self):
+        """Test that on_break returns None by default."""
+        block = Block(id="testmod:plain", name="Plain")
+        self.assertIsNone(block.on_break())
+        self.assertIsNone(block.break_event)
+
+    def test_block_all_three_events(self):
+        """Test block with left click, right click, and break events together."""
+
+        class FullEventBlock(Block):
+            def __init__(self):
+                super().__init__(id="testmod:full", name="Full Event Block")
+
+            def on_left_click(self):
+                return send_message("attacked")
+
+            def on_right_click(self):
+                return send_message("used")
+
+            def on_break(self):
+                return send_message("broken")
+
+        block = FullEventBlock()
+        mod = fabricpy.ModConfig(
+            mod_id="testmod",
+            name="Test Mod",
+            version="1.0.0",
+            description="desc",
+            authors=["Tester"],
+        )
+        mod.registerBlock(block)
+        src = mod._tutorial_blocks_src("com.example.testmod.blocks")
+        self.assertIn("AttackBlockCallback.EVENT.register", src)
+        self.assertIn("UseBlockCallback.EVENT.register", src)
+        self.assertIn("PlayerBlockBreakEvents.AFTER.register", src)
+        self.assertIn('Component.literal("attacked")', src)
+        self.assertIn('Component.literal("used")', src)
+        self.assertIn('Component.literal("broken")', src)
 
     def test_send_message_helper(self):
         """send_message returns proper Java snippet."""

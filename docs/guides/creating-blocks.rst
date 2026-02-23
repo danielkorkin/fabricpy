@@ -40,6 +40,12 @@ Optional Parameters
   ``fabricpy.message.send_action_bar_message`` make it easy to talk with players.
   The framework appends ``return ActionResult.SUCCESS;`` for you, so your
   methods should only include the statements to execute.
+* Override :py:meth:`fabricpy.block.Block.on_break` in a subclass (or pass
+  ``break_event`` to the constructor) to run Java code **after** the block is
+  broken. This fires server-side via Fabric's ``PlayerBlockBreakEvents.AFTER``
+  event. The callback receives ``world``, ``player``, ``pos``, ``state`` (the
+  block state before breaking), and ``entity`` (the ``BlockEntity``, may be
+  ``null``).
 
 Advanced Block Examples
 -----------------------
@@ -135,7 +141,22 @@ Block with Click Events
        def on_right_click(self):
            return send_action_bar_message("right clicked")
 
+       def on_break(self):
+           return send_message("block destroyed!")
+
    event_block = EventBlock()
+
+You can also use the constructor parameters for a declarative style:
+
+.. code-block:: python
+
+   block = fabricpy.Block(
+       id="mymod:alert_block",
+       name="Alert Block",
+       left_click_event='System.out.println("attacked");',
+       right_click_event='System.out.println("used");',
+       break_event='System.out.println("broken");',
+   )
 
 See :file:`examples/message_block.py` for a runnable example.
 

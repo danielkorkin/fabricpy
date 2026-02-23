@@ -5,6 +5,11 @@ This module provides the Block class for defining custom blocks in Minecraft Fab
 Blocks can have custom textures for both the block itself and its inventory item representation,
 recipes for crafting, creative tab assignment, and full mining configuration including
 hardness, blast resistance, required tools, mining levels, and per-tool speed overrides.
+
+Block event hooks supported:
+- **Left click (attack)**: ``AttackBlockCallback`` via :meth:`Block.on_left_click`
+- **Right click (interact)**: ``UseBlockCallback`` via :meth:`Block.on_right_click`
+- **After block break**: ``PlayerBlockBreakEvents.AFTER`` via :meth:`Block.on_break`
 """
 
 #: Valid tool types that can be used for ``tool_type`` and
@@ -43,6 +48,8 @@ class Block:
             Typically BUILDING_BLOCKS for most blocks.
         left_click_event: Java code to execute when the block is left clicked.
         right_click_event: Java code to execute when the block is right clicked.
+        break_event: Java code to execute after the block is broken/destroyed.
+            The code runs server-side via ``PlayerBlockBreakEvents.AFTER``.
         loot_table: Loot table definition controlling what the block drops when
             broken. Can be a LootTable instance or None (defaults to dropping
             itself).
@@ -81,6 +88,7 @@ class Block:
         item_group (ItemGroup | str): Creative tab assignment for the block item.
         left_click_event (str | None): Java code executed on left click.
         right_click_event (str | None): Java code executed on right click.
+        break_event (str | None): Java code executed after block is broken.
         loot_table (LootTable | None): Loot table for block drops (defaults to dropping itself).
         hardness (float | None): Block hardness (mining time).
         resistance (float | None): Blast resistance.
@@ -137,6 +145,7 @@ class Block:
         item_group: object | str | None = None,
         left_click_event: str | None = None,
         right_click_event: str | None = None,
+        break_event: str | None = None,
         loot_table: object | None = None,  # instance of LootTable or None
         tool_type: str
         | None = None,  # "pickaxe", "axe", "shovel", "hoe", "sword", or None
@@ -161,6 +170,8 @@ class Block:
                 Prefer overriding :meth:`on_left_click` in a subclass.
             right_click_event: Java code to execute when the block is right clicked.
                 Prefer overriding :meth:`on_right_click` in a subclass.
+            break_event: Java code to execute after the block is broken.
+                Prefer overriding :meth:`on_break` in a subclass.
             loot_table: Loot table for block drops.
             tool_type: Primary tool type for efficient mining.
             hardness: Block hardness (mining time base).
@@ -205,6 +216,7 @@ class Block:
         self.item_group = item_group
         self.left_click_event = left_click_event
         self.right_click_event = right_click_event
+        self.break_event = break_event
         self.loot_table = loot_table
         self.tool_type = tool_type
         self.hardness = hardness
@@ -242,3 +254,19 @@ class Block:
         """
 
         return self.right_click_event
+
+    def on_break(self) -> str | None:  # noqa: D401
+        """Java code executed after the block is broken (destroyed).
+
+        This hook fires server-side after the block has been successfully
+        removed from the world via ``PlayerBlockBreakEvents.AFTER``.  The
+        callback receives ``world``, ``player``, ``pos``, ``state`` (the
+        block state **before** breaking), and ``entity`` (the
+        ``BlockEntity``, may be ``null``).
+
+        Subclasses can override this to return a string of Java statements.
+        The default implementation returns ``break_event`` from the
+        constructor.
+        """
+
+        return self.break_event

@@ -26,6 +26,7 @@ class TestBlockComprehensive(unittest.TestCase):
         self.assertIsNone(block.item_group)
         self.assertIsNone(block.on_left_click())
         self.assertIsNone(block.on_right_click())
+        self.assertIsNone(block.on_break())
 
     def test_block_texture_system(self):
         """Test the block texture system and fallbacks."""

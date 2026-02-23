@@ -213,7 +213,7 @@ mod.registerBlock(ruby_glass)
 
 # Interactive altar block
 class RubyAltar(fabricpy.Block):
-    """An altar that greets the player on right click."""
+    """An altar that reacts to player interaction and destruction."""
 
     def __init__(self):
         super().__init__(
@@ -225,6 +225,12 @@ class RubyAltar(fabricpy.Block):
 
     def on_right_click(self):
         return send_message("The altar hums with energy...")
+
+    def on_left_click(self):
+        return send_message("The altar resists your blow!")
+
+    def on_break(self):
+        return send_message("The altar crumbles and its energy fades...")
 
 
 altar = RubyAltar()
