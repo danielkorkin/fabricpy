@@ -8,6 +8,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2026-02-22
 
 ### Added
+- **Block Actions & Hooks**: Event-driven block interaction system
+  - Three block event hooks: `on_left_click` (attack via `AttackBlockCallback`), `on_right_click` (use via `UseBlockCallback`), `on_break` (after destruction via `PlayerBlockBreakEvents.AFTER`)
+  - Declarative style via constructor parameters (`left_click_event`, `right_click_event`, `break_event`) or subclass method overrides
+  - Multiple actions can be composed by returning a list from any hook method
+- **`fabricpy.actions` module**: 16 ready-made Java code-snippet helpers for gameplay effects in block hooks
+  - `replace_block` — swap a block for a different one
+  - `teleport_player` — move the player to absolute or relative coordinates
+  - `launch_player` — apply velocity impulse / knockback
+  - `apply_effect` — grant a potion / status effect (`MobEffects` constants)
+  - `play_sound` — play a sound at the block position (`SoundEvents` constants)
+  - `summon_lightning` — strike lightning (server-side `ServerLevel` guard)
+  - `drop_item` — drop item(s) at the block position
+  - `place_fire` / `extinguish_area` — fire manipulation
+  - `give_xp` / `remove_xp` — experience point changes
+  - `damage_nearby` / `heal_nearby` — area-of-effect damage/healing
+  - `delayed_action` — schedule code to run after a tick delay
+  - `sculk_event` — emit a game event for sculk sensors
+- **`fabricpy.message` module**: Message helper functions for player communication
+  - `send_message` — send a chat message to the player
+  - `send_action_bar_message` — send an action-bar overlay message
+  - `console_print` — print to the server console (`System.out.println`)
+- **Tool Items**: `ToolItem` class extending `Item` with tool-specific properties
+  - `durability`, `mining_speed_multiplier`, `attack_damage`, `mining_level`, `enchantability`, `repair_ingredient`
+  - Example script `examples/tool_item.py` demonstrating tool creation
+- Example scripts `examples/block_actions.py` and `examples/block_hooks.py` demonstrating all action helpers and hook styles
+- Block actions test suite: 70 unit tests, 30 compilation tests, and 4 Gradle build tests covering all action helpers and hook combinations
+- Block actions documentation guide (`docs/guides/block-actions.rst`) with full action reference
 - **Mining Configuration**: Full block mining support wrapping Fabric natively
   - `hardness` / `resistance` — control break time and blast durability
   - `tool_type` — tag blocks as mineable by a specific tool (`"pickaxe"`, `"axe"`, `"shovel"`, `"hoe"`, `"sword"`)
@@ -38,14 +65,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Example script `examples/loot_table.py` demonstrating common patterns
 
 ### Changed
+- Block class now supports event hook parameters (`left_click_event`, `right_click_event`, `break_event`) and overridable methods (`on_left_click`, `on_right_click`, `on_break`)
 - Updated Block class to accept optional `loot_table` parameter
 - `ModConfig.compile()` now writes loot table JSON files to `data/<mod_id>/loot_table/`
+- `ModConfig.compile()` now generates Fabric event callback registrations for block hooks
 
 ### Fixed
 - Generated `ItemRegistrationTest.java` no longer produces duplicate `foodComponent` variable declarations when multiple food items are registered
 - Generated `RecipeValidationTest.java` now uses `RecipeType.CRAFTING` (correct Minecraft 1.21 Yarn mapping) instead of invalid `RecipeType.CRAFTING_SHAPED`
 
 ### Documentation
+- Added Block Actions guide (`docs/guides/block-actions.rst`) with full action reference and examples for all 16 action helpers
+- Added example scripts for block hooks (declarative + subclass styles) and block actions (all helpers)
 - Added Mining Configuration section to Creating Blocks guide with hardness/resistance, tool types, mining levels, and per-tool speed examples
 - Updated full mod example with mining-configured ore blocks
 - Updated README with mining tools & speeds section and examples table entry
@@ -54,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Block guide with loot table examples for ores and storage blocks
 - Updated quickstart guide with loot table usage
 - Updated README with loot table feature and examples
-- Added `fabricpy.loottable` module to API reference
+- Added `fabricpy.loottable`, `fabricpy.actions`, `fabricpy.message`, and `fabricpy.toolitem` modules to API reference
 
 ## [0.1.3] - 2025-06-11
 
