@@ -111,6 +111,7 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Proggramming Language :: Python :: 3.13",
         "Programming Language :: Java",
         "Operating System :: OS Independent",
         "Environment :: Console",
