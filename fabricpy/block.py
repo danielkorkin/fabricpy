@@ -274,7 +274,7 @@ class Block:
     # event hooks                                                        #
     # ------------------------------------------------------------------ #
 
-    def on_left_click(self) -> str | None:  # noqa: D401
+    def on_left_click(self) -> HookResult:  # noqa: D401
         """Java code executed when the block is left clicked.
 
         Subclasses can override this to return a string of Java statements,
@@ -295,7 +295,7 @@ class Block:
 
         return _normalize_hook(self.left_click_event)
 
-    def on_right_click(self) -> str | None:  # noqa: D401
+    def on_right_click(self) -> HookResult:  # noqa: D401
         """Java code executed when the block is right clicked.
 
         Subclasses can override this to return a string of Java statements,
@@ -315,7 +315,7 @@ class Block:
 
         return _normalize_hook(self.right_click_event)
 
-    def on_break(self) -> str | None:  # noqa: D401
+    def on_break(self) -> HookResult:  # noqa: D401
         """Java code executed after the block is broken (destroyed).
 
         This hook fires server-side after the block has been successfully
