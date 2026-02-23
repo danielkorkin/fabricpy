@@ -14,7 +14,22 @@ Example:
 
 from __future__ import annotations
 
-__all__ = ["send_message", "send_action_bar_message"]
+__all__ = ["send_message", "send_action_bar_message", "console_print"]
+
+
+def console_print(message: str) -> str:
+    """Return Java code to print a message to the server console.
+
+    This is a convenience wrapper around ``System.out.println(...)``.
+
+    Args:
+        message: The text to print to the console.
+
+    Returns:
+        str: Java statement that prints the message.
+    """
+    escaped = message.replace('"', '\\"')
+    return f'System.out.println("{escaped}");'
 
 
 def send_message(message: str, player_var: str = "player") -> str:
