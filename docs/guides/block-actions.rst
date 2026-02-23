@@ -9,10 +9,6 @@ Every function returns a plain Python string containing one or more Java
 statements.  Combine multiple actions by returning a **list** from your hook
 method — the framework joins them automatically.
 
-.. contents:: Action Reference
-   :local:
-   :depth: 1
-
 Quick Example
 -------------
 
