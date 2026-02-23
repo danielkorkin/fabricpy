@@ -3,8 +3,16 @@
 
 This module provides the Block class for defining custom blocks in Minecraft Fabric mods.
 Blocks can have custom textures for both the block itself and its inventory item representation,
-recipes for crafting, and creative tab assignment.
+recipes for crafting, creative tab assignment, and full mining configuration including
+hardness, blast resistance, required tools, mining levels, and per-tool speed overrides.
 """
+
+#: Valid tool types that can be used for ``tool_type`` and
+#: ``mining_speeds`` keys.
+VALID_TOOL_TYPES = {"pickaxe", "axe", "shovel", "hoe", "sword"}
+
+#: Valid mining-level strings for ``mining_level``.
+VALID_MINING_LEVELS = {"stone", "iron", "diamond"}
 
 
 class Block:
@@ -13,6 +21,9 @@ class Block:
     The Block class handles the definition of custom blocks including their properties,
     textures, recipes, and creative tab assignment. Blocks automatically generate
     corresponding BlockItems for inventory representation.
+
+    Mining behaviour is fully configurable through ``hardness``, ``resistance``,
+    ``tool_type``, ``mining_level``, ``requires_tool``, and ``mining_speeds``.
 
     Args:
         id: The registry identifier for the block (e.g., "mymod:copper_block").
@@ -33,11 +44,32 @@ class Block:
         left_click_event: Java code to execute when the block is left clicked.
         right_click_event: Java code to execute when the block is right clicked.
         loot_table: Loot table definition controlling what the block drops when
-            broken. Can be a LootTable instance or None (no custom loot table).
-        tool_type: The tool required to mine this block and obtain drops.
+            broken. Can be a LootTable instance or None (defaults to dropping
+            itself).
+        tool_type: The primary tool required to mine this block efficiently.
             One of ``"pickaxe"``, ``"axe"``, ``"shovel"``, ``"hoe"``,
-            or ``None`` (no specific tool required — drops with any tool).
+            ``"sword"``, or ``None`` (no specific tool required).
             Defaults to ``None``.
+        hardness: How long the block takes to mine.  Lower values break faster.
+            Vanilla reference values: dirt = 0.5, stone = 1.5, obsidian = 50.
+            Defaults to ``None`` (uses stone-equivalent 1.5).
+        resistance: Blast resistance against explosions.
+            Vanilla reference values: stone = 6.0, obsidian = 1200.
+            Defaults to ``None`` (uses stone-equivalent 6.0).
+        mining_level: Minimum tool tier needed to mine the block and obtain
+            drops.  One of ``"stone"``, ``"iron"``, ``"diamond"``, or
+            ``None`` (any tier works).  Requires ``requires_tool=True``
+            (or ``tool_type`` set) to be effective.  Defaults to ``None``.
+        requires_tool: Whether the correct tool must be used for the block
+            to drop items.  When ``None`` the value is inferred: ``True``
+            if ``tool_type`` is set, ``False`` otherwise.
+        mining_speeds: A mapping of tool type strings (e.g. ``"pickaxe"``,
+            ``"shovel"``) to custom mining-speed multipliers for this block.
+            When provided, a custom block class is generated that overrides
+            the per-tool break speed, enabling fine-grained control over
+            how fast each tool type mines the block.  The block is also
+            automatically added to the ``mineable/<tool>`` tags for every
+            key in the dict.  Defaults to ``None``.
 
     Attributes:
         id (str): The registry identifier for the block.
@@ -49,7 +81,12 @@ class Block:
         item_group (ItemGroup | str): Creative tab assignment for the block item.
         left_click_event (str | None): Java code executed on left click.
         right_click_event (str | None): Java code executed on right click.
-        loot_table (LootTable | None): Loot table for block drops.
+        loot_table (LootTable | None): Loot table for block drops (defaults to dropping itself).
+        hardness (float | None): Block hardness (mining time).
+        resistance (float | None): Blast resistance.
+        mining_level (str | None): Minimum tool tier for drops.
+        requires_tool (bool): Whether correct tool is required for drops.
+        mining_speeds (dict[str, float] | None): Per-tool speed overrides.
 
     Example:
         Creating a basic block::
@@ -61,28 +98,31 @@ class Block:
                 item_group=fabricpy.item_group.BUILDING_BLOCKS
             )
 
-        Creating a block with separate inventory texture::
+        Creating a block with mining configuration::
 
             block = Block(
-                id="mymod:glowing_stone",
-                name="Glowing Stone",
-                block_texture_path="textures/blocks/glowing_stone.png",
-                inventory_texture_path="textures/items/glowing_stone_item.png"
+                id="mymod:ruby_ore",
+                name="Ruby Ore",
+                hardness=3.0,
+                resistance=3.0,
+                tool_type="pickaxe",
+                mining_level="iron",
+                requires_tool=True,
             )
 
-        Creating a block with a recipe::
-
-            recipe = RecipeJson({
-                "type": "minecraft:crafting_shaped",
-                "pattern": ["###", "###", "###"],
-                "key": {"#": "minecraft:copper_ingot"},
-                "result": {"id": "mymod:copper_block", "count": 1}
-            })
+        Creating a block with per-tool mining speeds::
 
             block = Block(
-                id="mymod:copper_block",
-                name="Copper Block",
-                recipe=recipe
+                id="mymod:mixed_ore",
+                name="Mixed Ore",
+                hardness=4.0,
+                resistance=4.0,
+                mining_speeds={
+                    "pickaxe": 8.0,
+                    "shovel": 3.0,
+                },
+                requires_tool=True,
+                mining_level="stone",
             )
     """
 
@@ -98,7 +138,13 @@ class Block:
         left_click_event: str | None = None,
         right_click_event: str | None = None,
         loot_table: object | None = None,  # instance of LootTable or None
-        tool_type: str | None = None,  # "pickaxe", "axe", "shovel", "hoe", or None
+        tool_type: str
+        | None = None,  # "pickaxe", "axe", "shovel", "hoe", "sword", or None
+        hardness: float | None = None,
+        resistance: float | None = None,
+        mining_level: str | None = None,  # "stone", "iron", "diamond", or None
+        requires_tool: bool | None = None,
+        mining_speeds: dict[str, float] | None = None,
     ):
         """Initialize a new Block instance.
 
@@ -115,7 +161,40 @@ class Block:
                 Prefer overriding :meth:`on_left_click` in a subclass.
             right_click_event: Java code to execute when the block is right clicked.
                 Prefer overriding :meth:`on_right_click` in a subclass.
+            loot_table: Loot table for block drops.
+            tool_type: Primary tool type for efficient mining.
+            hardness: Block hardness (mining time base).
+            resistance: Blast resistance.
+            mining_level: Minimum tool tier (``"stone"``, ``"iron"``, or
+                ``"diamond"``).
+            requires_tool: Whether correct tool is required for drops.
+                Inferred from ``tool_type`` when ``None``.
+            mining_speeds: Per-tool speed overrides as ``{tool: speed}``
+                mapping.
+
+        Raises:
+            ValueError: If *tool_type*, *mining_level*, or any key in
+                *mining_speeds* is not a recognised value.
         """
+        # ── validation ------------------------------------------------ #
+        if tool_type is not None and tool_type not in VALID_TOOL_TYPES:
+            raise ValueError(
+                f"tool_type must be one of {sorted(VALID_TOOL_TYPES)}, "
+                f"got {tool_type!r}"
+            )
+        if mining_level is not None and mining_level not in VALID_MINING_LEVELS:
+            raise ValueError(
+                f"mining_level must be one of {sorted(VALID_MINING_LEVELS)}, "
+                f"got {mining_level!r}"
+            )
+        if mining_speeds is not None:
+            bad = set(mining_speeds) - VALID_TOOL_TYPES
+            if bad:
+                raise ValueError(
+                    f"mining_speeds keys must be from {sorted(VALID_TOOL_TYPES)}, "
+                    f"got invalid key(s): {sorted(bad)}"
+                )
+
         self.id = id
         self.name = name
         self.max_stack_size = max_stack_size
@@ -128,6 +207,14 @@ class Block:
         self.right_click_event = right_click_event
         self.loot_table = loot_table
         self.tool_type = tool_type
+        self.hardness = hardness
+        self.resistance = resistance
+        self.mining_level = mining_level
+        # Infer requires_tool: True when tool_type is set, False otherwise
+        self.requires_tool = (
+            requires_tool if requires_tool is not None else (tool_type is not None)
+        )
+        self.mining_speeds = dict(mining_speeds) if mining_speeds else None
 
     # ------------------------------------------------------------------ #
     # event hooks                                                        #

@@ -30,6 +30,7 @@ from typing import Dict, List, Set
 
 from .fooditem import FoodItem
 from .itemgroup import ItemGroup
+from .loottable import LootTable
 from .recipejson import RecipeJson
 from .toolitem import ToolItem
 
@@ -572,7 +573,8 @@ class ModConfig:
         for block in self.registered_blocks:
             lt = getattr(block, "loot_table", None)
             if lt is None:
-                continue
+                # Default to dropping self when no loot table is specified
+                lt = LootTable.drops_self(block.id)
             block_name = block.id.split(":", 1)[-1] if ":" in block.id else block.id
             entries.append((block_name, lt))
 
@@ -605,24 +607,32 @@ class ModConfig:
     # ── block tags (mineable / tool) ──────────────────────────────────── #
 
     def write_block_tags(self, project_dir: str, mod_id: str) -> None:
-        """Write mineable block-tag JSON files so blocks drop loot correctly.
+        """Write mineable and mining-level block-tag JSON files.
 
-        For every registered block that specifies a ``tool_type`` (e.g.
-        ``"pickaxe"``), the block is added to
-        ``data/minecraft/tags/block/mineable/<tool>.json``.
+        For every registered block that specifies a ``tool_type`` (and/or
+        keys in ``mining_speeds``), the block is added to the corresponding
+        ``data/minecraft/tags/block/mineable/<tool>.json`` tags.
+
+        Blocks that specify a ``mining_level`` (``"stone"``, ``"iron"``,
+        or ``"diamond"``) are also added to
+        ``data/minecraft/tags/block/needs_<level>_tool.json``.
 
         Args:
             project_dir: Root directory of the mod project.
             mod_id: The mod's identifier.
         """
+        # ── collect mineable tool types ────────────────────────────── #
         tool_map: Dict[str, List[str]] = defaultdict(list)
         for blk in self.registered_blocks:
+            tools_for_block: set[str] = set()
             tool = getattr(blk, "tool_type", None)
             if tool:
-                tool_map[tool].append(blk.id)
-
-        if not tool_map:
-            return
+                tools_for_block.add(tool)
+            mining_speeds = getattr(blk, "mining_speeds", None)
+            if mining_speeds:
+                tools_for_block.update(mining_speeds.keys())
+            for t in tools_for_block:
+                tool_map[t].append(blk.id)
 
         for tool, block_ids in tool_map.items():
             tag_dir = os.path.join(
@@ -652,6 +662,42 @@ class ModConfig:
             with open(tag_path, "w", encoding="utf-8") as fh:
                 json.dump(tag_data, fh, indent=2)
             print(f"  ✔ wrote block tag  → {os.path.relpath(tag_path, project_dir)}")
+
+        # ── collect mining-level requirements ─────────────────────── #
+        level_map: Dict[str, List[str]] = defaultdict(list)
+        for blk in self.registered_blocks:
+            level = getattr(blk, "mining_level", None)
+            if level:
+                level_map[level].append(blk.id)
+
+        for level, block_ids in level_map.items():
+            tag_dir = os.path.join(
+                project_dir,
+                "src",
+                "main",
+                "resources",
+                "data",
+                "minecraft",
+                "tags",
+                "block",
+            )
+            os.makedirs(tag_dir, exist_ok=True)
+            tag_path = os.path.join(tag_dir, f"needs_{level}_tool.json")
+
+            existing_values = []
+            if os.path.exists(tag_path):
+                with open(tag_path, "r", encoding="utf-8") as fh:
+                    existing = json.load(fh)
+                    existing_values = existing.get("values", [])
+
+            merged = list(dict.fromkeys(existing_values + block_ids))
+            tag_data = {"replace": False, "values": merged}
+
+            with open(tag_path, "w", encoding="utf-8") as fh:
+                json.dump(tag_data, fh, indent=2)
+            print(
+                f"  ✔ wrote mining-level tag → {os.path.relpath(tag_path, project_dir)}"
+            )
 
     # ================================================================== #
     #                          ITEMS  &  FOOD                            #
@@ -1326,6 +1372,13 @@ public class CustomToolItem extends Item {{
         ) as fh:
             fh.write(self._custom_block_src(package_path))
 
+        # Generate CustomMiningBlock.java if any block uses mining_speeds
+        if any(getattr(blk, "mining_speeds", None) for blk in self.registered_blocks):
+            with open(
+                os.path.join(pkg_dir, "CustomMiningBlock.java"), "w", encoding="utf-8"
+            ) as fh:
+                fh.write(self._custom_mining_block_src(package_path))
+
     def _tutorial_blocks_src(self, pkg: str) -> str:
         """Generate Java source code for the TutorialBlocks class.
 
@@ -1383,6 +1436,11 @@ public class CustomToolItem extends Item {{
             L.append("import net.fabricmc.fabric.api.event.player.UseBlockCallback;")
         if has_left_click or has_right_click:
             L.append("import net.minecraft.world.InteractionResult;")
+        has_mining_speeds = any(
+            getattr(b, "mining_speeds", None) for b in self.registered_blocks
+        )
+        if has_mining_speeds:
+            L.append("import java.util.Map;")
         L.append("import java.util.function.Function;\n")
         L.append("public final class TutorialBlocks {")
         L.append("    private TutorialBlocks() {}\n")
@@ -1390,12 +1448,35 @@ public class CustomToolItem extends Item {{
             const = self._to_java_constant(blk.id)
             # Extract just the path part if the ID is namespaced
             block_path = blk.id.split(":", 1)[-1]
-            props = "BlockBehaviour.Properties.ofFullCopy(Blocks.STONE)"
-            if getattr(blk, "tool_type", None):
+
+            # ── block properties ────────────────────────────────── #
+            hardness = getattr(blk, "hardness", None)
+            resistance = getattr(blk, "resistance", None)
+            blk_requires_tool = getattr(blk, "requires_tool", False)
+            blk_mining_speeds = getattr(blk, "mining_speeds", None)
+
+            if hardness is not None or resistance is not None:
+                h = hardness if hardness is not None else 1.5
+                r = resistance if resistance is not None else 6.0
+                props = f"BlockBehaviour.Properties.of().strength({h}f, {r}f)"
+            else:
+                props = "BlockBehaviour.Properties.ofFullCopy(Blocks.STONE)"
+
+            if blk_requires_tool:
                 props += ".requiresCorrectToolForDrops()"
+
+            # ── factory function ────────────────────────────────── #
+            if blk_mining_speeds:
+                entries = ", ".join(
+                    f'"{k}", {v}f' for k, v in blk_mining_speeds.items()
+                )
+                factory = f"s -> new CustomMiningBlock(s, Map.of({entries}))"
+            else:
+                factory = "CustomBlock::new"
+
             L.append(
                 f'    public static final Block {const} = register("{block_path}", '
-                f"CustomBlock::new, {props}, true);"
+                f"{factory}, {props}, true);"
             )
         L.append("")
         L.append(
@@ -1487,6 +1568,90 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 
 public class CustomBlock extends Block {{
     public CustomBlock(BlockBehaviour.Properties s) {{ super(s); }}
+}}
+"""
+
+    def _custom_mining_block_src(self, pkg: str) -> str:
+        """Generate Java source for the ``CustomMiningBlock`` class.
+
+        ``CustomMiningBlock`` extends ``Block`` with a per-tool-type speed
+        override.  The constructor accepts a ``Map<String, Float>`` whose keys
+        are tool names (``"pickaxe"``, ``"axe"``, ``"shovel"``, ``"hoe"``,
+        ``"sword"``) and whose values are the custom mining speed multiplier
+        applied when the player holds a tool of that type.
+
+        The class overrides ``getDestroyProgress`` to check the held item
+        against Minecraft's item tags (``ItemTags.PICKAXES``, etc.) and
+        replaces the normal speed calculation with the custom value.
+
+        Args:
+            pkg: The Java package name for the generated class.
+
+        Returns:
+            Complete Java source for ``CustomMiningBlock.java``.
+        """
+        return f"""package {pkg};
+
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.core.BlockPos;
+import net.minecraft.tags.ItemTags;
+import java.util.Map;
+
+/**
+ * A custom block that supports per-tool-type mining speed overrides.
+ *
+ * <p>Pass a {{@code Map<String, Float>}} of tool type names to speed
+ * multipliers in the constructor.  When a player mines this block while
+ * holding a matching tool type, the custom speed is used instead of
+ * the default tool speed.</p>
+ */
+public class CustomMiningBlock extends Block {{
+    private final Map<String, Float> toolSpeeds;
+
+    /**
+     * @param settings   block properties (hardness, resistance, etc.)
+     * @param toolSpeeds mapping from tool type name to speed multiplier
+     */
+    public CustomMiningBlock(BlockBehaviour.Properties settings,
+                             Map<String, Float> toolSpeeds) {{
+        super(settings);
+        this.toolSpeeds = toolSpeeds;
+    }}
+
+    @Override
+    public float getDestroyProgress(BlockState state, Player player,
+                                    BlockGetter level, BlockPos pos) {{
+        float destroyTime = state.getDestroySpeed(level, pos);
+        if (destroyTime == -1.0F) {{
+            return 0.0F;
+        }}
+
+        ItemStack held = player.getMainHandItem();
+
+        // Start with the default speed from the player/tool combination.
+        float speed = player.getDestroySpeed(state);
+
+        // Override with configured per-tool-type speed when applicable.
+        if (held.is(ItemTags.PICKAXES) && toolSpeeds.containsKey("pickaxe")) {{
+            speed = toolSpeeds.get("pickaxe");
+        }} else if (held.is(ItemTags.AXES) && toolSpeeds.containsKey("axe")) {{
+            speed = toolSpeeds.get("axe");
+        }} else if (held.is(ItemTags.SHOVELS) && toolSpeeds.containsKey("shovel")) {{
+            speed = toolSpeeds.get("shovel");
+        }} else if (held.is(ItemTags.HOES) && toolSpeeds.containsKey("hoe")) {{
+            speed = toolSpeeds.get("hoe");
+        }} else if (held.is(ItemTags.SWORDS) && toolSpeeds.containsKey("sword")) {{
+            speed = toolSpeeds.get("sword");
+        }}
+
+        int modifier = player.hasCorrectToolForDrops(state) ? 30 : 100;
+        return speed / destroyTime / (float) modifier;
+    }}
 }}
 """
 
@@ -1967,7 +2132,9 @@ public class ItemRegistrationTest {{
     void testFoodItemProperties() {
 """
 
-        # Add food-specific tests
+        # Add food-specific tests — each food item is wrapped in its own
+        # scoped block { ... } so that local variables like foodComponent
+        # do not collide when there are multiple food items.
         for item in self.registered_items:
             if hasattr(item, "nutrition") and item.nutrition is not None:
                 item_id = item.id
@@ -1975,21 +2142,25 @@ public class ItemRegistrationTest {{
                     namespace, path = item_id.split(":", 1)
                     safe_name = path.replace("-", "_").replace(".", "_")
                     test_content += f'''
-        // Test {item.name} food properties
-        Item {safe_name} = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}"));
-        ItemStack {safe_name}_stack = new ItemStack({safe_name});
-        FoodProperties foodComponent = {safe_name}_stack.get(DataComponents.FOOD);
-        
-        Assertions.assertNotNull(foodComponent, "{item.name} should have food component");
-        Assertions.assertEquals({item.nutrition}, foodComponent.nutrition(), 
-            "{item.name} should have nutrition value of {item.nutrition}");
+        {{ // scope for {safe_name}
+            Item {safe_name} = BuiltInRegistries.ITEM.getValue(Identifier.fromNamespaceAndPath("{namespace}", "{path}"));
+            ItemStack {safe_name}_stack = new ItemStack({safe_name});
+            FoodProperties foodComponent = {safe_name}_stack.get(DataComponents.FOOD);
+            
+            Assertions.assertNotNull(foodComponent, "{item.name} should have food component");
+            Assertions.assertEquals({item.nutrition}, foodComponent.nutrition(), 
+                "{item.name} should have nutrition value of {item.nutrition}");
 '''
 
                     if hasattr(item, "saturation") and item.saturation is not None:
                         test_content += f'''
-        Assertions.assertEquals({item.saturation}f, foodComponent.saturation(), 0.001f,
-            "{item.name} should have saturation value of {item.saturation}");
+            Assertions.assertEquals({item.saturation}f, foodComponent.saturation(), 0.001f,
+                "{item.name} should have saturation value of {item.saturation}");
 '''
+
+                    test_content += """
+        }
+"""
 
         test_content += """
         Assertions.assertTrue(true, "Food item property tests completed");
@@ -2073,7 +2244,7 @@ public class RecipeValidationTest {{
         // Recipe type: {recipe_type}
         Assertions.assertDoesNotThrow(() -> {{
             // Basic validation that recipe system works
-            RecipeType.CRAFTING_SHAPED.toString();
+            RecipeType.CRAFTING.toString();
         }}, "{recipe_type} should be a valid recipe type");
 '''
 

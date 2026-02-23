@@ -102,11 +102,27 @@ Here's a complete example of creating a simple mod:
        loot_table=fabricpy.LootTable.drops_self("tutorial_mod:ruby_block"),
    )
 
+   # Create an ore block with mining configuration
+   ruby_ore = fabricpy.Block(
+       id="tutorial_mod:ruby_ore",
+       name="Ruby Ore",
+       hardness=3.0,
+       resistance=3.0,
+       tool_type="pickaxe",
+       mining_level="iron",
+       item_group=fabricpy.item_group.NATURAL,
+       loot_table=fabricpy.LootTable.drops_with_fortune(
+           "tutorial_mod:ruby_ore", "tutorial_mod:ruby",
+           min_count=1, max_count=2,
+       ),
+   )
+
    # Register all items and blocks
    mod.registerItem(ruby)
    mod.registerItem(ruby_pickaxe)
    mod.registerFoodItem(ruby_apple)
    mod.registerBlock(ruby_block)
+   mod.registerBlock(ruby_ore)
 
    # Compile and run the mod
    mod.compile()
@@ -117,6 +133,7 @@ Next Steps
 
 - Learn about creating recipes (see the RecipeJson class in the API reference)
 - Use the `Crafting Recipe Generator <https://crafting.thedestruc7i0n.ca/>`_ to easily create crafting recipe JSON files with a visual interface
+- Configure block mining with hardness, tool types, mining levels, and per-tool speeds (see the :doc:`guides/creating-blocks` guide)
 - Define loot tables for your blocks (see the :doc:`guides/loot-tables` guide)
 - Understand custom creative tabs (see the ItemGroup class in the API reference)
 - Explore the :doc:`complete API reference <api>`
@@ -149,7 +166,9 @@ Example scripts can be found in the ``examples`` directory.
 .. literalinclude:: ../examples/loot_table.py
    :caption: Loot table patterns (self-drops, fortune, silk touch, entity & chest)
    :language: python
-
+.. literalinclude:: ../examples/mining_blocks.py
+   :caption: Mining config \u2014 hardness, tool types, mining levels, per-tool speeds
+   :language: python
 .. literalinclude:: ../examples/full_mod.py
    :caption: Complete mod — all features combined
    :language: python

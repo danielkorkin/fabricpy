@@ -46,7 +46,7 @@ Attributes:
 
 from . import item_group, message
 from .__version__ import __version__
-from .block import Block
+from .block import Block, VALID_MINING_LEVELS, VALID_TOOL_TYPES
 from .fooditem import FoodItem
 from .item import Item
 from .loottable import LootPool, LootTable
@@ -65,6 +65,8 @@ __all__ = [
     "RecipeJson",
     "LootTable",
     "LootPool",
+    "VALID_TOOL_TYPES",
+    "VALID_MINING_LEVELS",
     "item_group",
     "message",
     "__version__",

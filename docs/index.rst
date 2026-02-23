@@ -15,6 +15,7 @@ Features
 * **Block Registration**: Simple block creation with automatic BlockItem generation  
 * **Recipe Support**: Built-in recipe JSON handling for crafting, smelting, etc.
 * **Loot Tables**: Native loot table support with builder methods for common drop patterns
+* **Mining Configuration**: Hardness, resistance, tool types, mining levels, and per-tool speed overrides
 * **Creative Tabs**: Support for both vanilla and custom creative inventory tabs
 * **Automatic Compilation**: Generates complete Fabric mod projects from Python code
 * **Google Docstrings**: Comprehensive documentation with examples

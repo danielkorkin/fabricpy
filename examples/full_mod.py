@@ -6,9 +6,12 @@ Ties together every fabricpy feature into one cohesive mod:
 * Raw material item + gem item
 * Tool items (pickaxe and sword)
 * Food items (raw + cooked via smelting recipe)
-* Ore block with fortune-affected loot
+* Ore block with fortune-affected loot and mining configuration
+* Deepslate ore variant (harder, same mining level)
+* Multi-tool ore with per-tool mining speed overrides
 * Storage block with shaped crafting recipe and self-drop loot
 * Glass-style decorative block with silk-touch loot
+* Interactive block with click events
 * Entity loot table registered standalone
 
 This script is intended as a reference for real mods.
@@ -132,6 +135,10 @@ mod.registerFoodItem(cooked_ruby_apple)
 ruby_ore = fabricpy.Block(
     id="ruby_mod:ruby_ore",
     name="Ruby Ore",
+    hardness=3.0,
+    resistance=3.0,
+    tool_type="pickaxe",
+    mining_level="iron",
     item_group=fabricpy.item_group.NATURAL,
     loot_table=fabricpy.LootTable.drops_with_fortune(
         "ruby_mod:ruby_ore",
@@ -142,10 +149,14 @@ ruby_ore = fabricpy.Block(
 )
 mod.registerBlock(ruby_ore)
 
-# Deepslate ore variant
+# Deepslate ore variant — harder and requires iron
 deepslate_ruby_ore = fabricpy.Block(
     id="ruby_mod:deepslate_ruby_ore",
     name="Deepslate Ruby Ore",
+    hardness=4.5,
+    resistance=3.0,
+    tool_type="pickaxe",
+    mining_level="iron",
     item_group=fabricpy.item_group.NATURAL,
     loot_table=fabricpy.LootTable.drops_with_fortune(
         "ruby_mod:deepslate_ruby_ore",
@@ -155,6 +166,23 @@ deepslate_ruby_ore = fabricpy.Block(
     ),
 )
 mod.registerBlock(deepslate_ruby_ore)
+
+# Multi-tool ore — per-tool speed overrides, stone tier
+mixed_ruby_ore = fabricpy.Block(
+    id="ruby_mod:mixed_ruby_ore",
+    name="Mixed Ruby Ore",
+    hardness=4.0,
+    resistance=4.0,
+    requires_tool=True,
+    mining_level="stone",
+    mining_speeds={
+        "pickaxe": 8.0,  # fastest
+        "shovel": 3.0,  # slower but still works
+    },
+    item_group=fabricpy.item_group.NATURAL,
+    loot_table=fabricpy.LootTable.drops_self("ruby_mod:mixed_ruby_ore"),
+)
+mod.registerBlock(mixed_ruby_ore)
 
 # Storage block — craft 9 rubies into a block, drops itself
 ruby_block = fabricpy.Block(

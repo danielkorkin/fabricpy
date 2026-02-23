@@ -62,11 +62,15 @@ Ore Block
 
 .. code-block:: python
 
-   # Ore block with custom texture and fortune-affected loot table
+   # Ore block with mining properties and fortune-affected loot table
    ruby_ore = fabricpy.Block(
        id="mymod:ruby_ore",
        name="Ruby Ore",
-       block_texture_path="textures/blocks/ruby_ore.png", 
+       block_texture_path="textures/blocks/ruby_ore.png",
+       hardness=3.0,
+       resistance=3.0,
+       tool_type="pickaxe",
+       mining_level="iron",
        item_group=fabricpy.item_group.NATURAL,
        loot_table=fabricpy.LootTable.drops_with_fortune(
            "mymod:ruby_ore", "mymod:ruby",
@@ -168,6 +172,123 @@ parameter to attach one:
    )
 
 See :doc:`loot-tables` for the full guide on all available loot table patterns.
+
+Mining Configuration
+~~~~~~~~~~~~~~~~~~~~
+
+Use the mining properties to control how blocks are mined, which tools
+are effective, and whether the correct tool is required for drops.
+
+**Hardness & Resistance**
+
+``hardness`` controls how long the block takes to mine, while ``resistance``
+controls blast durability.  When neither is specified fabricpy copies stone
+defaults (hardness 1.5, resistance 6.0).
+
+.. code-block:: python
+
+   # A hard ore that resists explosions
+   tough_ore = fabricpy.Block(
+       id="mymod:tough_ore",
+       name="Tough Ore",
+       hardness=5.0,
+       resistance=12.0,
+   )
+
+Reference values:
+
+=============  =========  ==========
+Block          Hardness   Resistance
+=============  =========  ==========
+Dirt           0.5        0.5
+Stone          1.5        6.0
+Iron Ore       3.0        3.0
+Obsidian       50.0       1200.0
+=============  =========  ==========
+
+**Tool type & requiring a tool for drops**
+
+Set ``tool_type`` to tag the block as mineable by a specific tool.  When
+``tool_type`` is set, ``requires_tool`` defaults to ``True`` which means
+the block drops nothing if broken by hand.
+
+.. code-block:: python
+
+   iron_ore = fabricpy.Block(
+       id="mymod:iron_ore",
+       name="Iron Ore",
+       hardness=3.0,
+       resistance=3.0,
+       tool_type="pickaxe",
+       # requires_tool is automatically True
+   )
+
+Valid tool types: ``"pickaxe"``, ``"axe"``, ``"shovel"``, ``"hoe"``,
+``"sword"``.
+
+**Mining level**
+
+``mining_level`` sets the minimum tool tier required to mine the block.
+Without the correct tier the block drops nothing (if ``requires_tool``
+is enabled).
+
+.. code-block:: python
+
+   diamond_ore = fabricpy.Block(
+       id="mymod:diamond_ore",
+       name="Diamond Ore",
+       hardness=3.0,
+       resistance=3.0,
+       tool_type="pickaxe",
+       mining_level="iron",      # needs at least an iron pickaxe
+   )
+
+Valid mining levels: ``"stone"``, ``"iron"``, ``"diamond"``.
+
+**Per-tool mining speeds**
+
+``mining_speeds`` lets you assign custom speed multipliers for different
+tool types on the same block.  This generates a ``CustomMiningBlock``
+Java class that overrides the per-tool break speed, and automatically
+tags the block as mineable by every listed tool.
+
+.. code-block:: python
+
+   mixed_ore = fabricpy.Block(
+       id="mymod:mixed_ore",
+       name="Mixed Ore",
+       hardness=4.0,
+       resistance=4.0,
+       requires_tool=True,
+       mining_level="stone",
+       mining_speeds={
+           "pickaxe": 8.0,       # fastest
+           "shovel": 3.0,        # slower but still works
+       },
+   )
+
+**Full mining example**
+
+.. code-block:: python
+
+   ruby_ore = fabricpy.Block(
+       id="mymod:ruby_ore",
+       name="Ruby Ore",
+       hardness=3.0,
+       resistance=3.0,
+       tool_type="pickaxe",
+       mining_level="iron",
+       mining_speeds={
+           "pickaxe": 8.0,
+           "axe": 2.0,
+       },
+       loot_table=fabricpy.LootTable.drops_with_fortune(
+           "mymod:ruby_ore", "mymod:ruby",
+           min_count=1, max_count=3,
+       ),
+   )
+
+See :file:`examples/mining_blocks.py` for a runnable demo.
 
 Block Categories by Use Case
 ----------------------------

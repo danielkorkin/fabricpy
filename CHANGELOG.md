@@ -5,9 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.4] - 2025-06-12
+## [0.2.0] - 2026-02-22
 
 ### Added
+- **Mining Configuration**: Full block mining support wrapping Fabric natively
+  - `hardness` / `resistance` — control break time and blast durability
+  - `tool_type` — tag blocks as mineable by a specific tool (`"pickaxe"`, `"axe"`, `"shovel"`, `"hoe"`, `"sword"`)
+  - `mining_level` — minimum tool tier for drops (`"stone"`, `"iron"`, `"diamond"`)
+  - `requires_tool` — whether correct tool must be used for the block to drop items (auto-inferred from `tool_type`)
+  - `mining_speeds` — per-tool speed overrides via a generated `CustomMiningBlock` Java class that overrides `getDestroyProgress()`
+  - Automatic generation of Minecraft block tags (`mineable/<tool>.json`, `needs_<level>_tool.json`)
+- `VALID_TOOL_TYPES` and `VALID_MINING_LEVELS` constants exported from `fabricpy`
+- Example script `examples/mining_blocks.py` demonstrating all mining configurations
+- Comprehensive E2E test suite (`tests/test_e2e.py`) with 52 tests:
+  - 27 compile-only tests validating project structure, Java correctness, mining tags, and edge cases
+  - 15 real Gradle build tests (`./gradlew build`) covering every feature combination
+  - 9 mocked client-run tests for `build()` / `run()` workflows
+  - 1 `runClient --dry-run` test verifying the full task graph resolves
 - **Loot Tables**: Native loot table support via `LootTable` and `LootPool` classes
 - `LootTable.drops_self()` — block drops itself when broken
 - `LootTable.drops_item()` — block drops a different item (fixed or ranged count)
@@ -27,7 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated Block class to accept optional `loot_table` parameter
 - `ModConfig.compile()` now writes loot table JSON files to `data/<mod_id>/loot_table/`
 
+### Fixed
+- Generated `ItemRegistrationTest.java` no longer produces duplicate `foodComponent` variable declarations when multiple food items are registered
+- Generated `RecipeValidationTest.java` now uses `RecipeType.CRAFTING` (correct Minecraft 1.21 Yarn mapping) instead of invalid `RecipeType.CRAFTING_SHAPED`
+
 ### Documentation
+- Added Mining Configuration section to Creating Blocks guide with hardness/resistance, tool types, mining levels, and per-tool speed examples
+- Updated full mod example with mining-configured ore blocks
+- Updated README with mining tools & speeds section and examples table entry
+- Updated quickstart guide with mining ore block example
 - New "Loot Tables" guide in docs with complete API walkthrough
 - Updated Block guide with loot table examples for ores and storage blocks
 - Updated quickstart guide with loot table usage

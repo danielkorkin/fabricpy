@@ -8,6 +8,7 @@ Python Library that allows you to create Fabric Minecraft mods in Python! Write 
 
 ✨ **Easy Mod Creation**: Define items, tools, blocks, and food with simple Python classes
 🔧 **Full Fabric Integration**: Generates complete mod projects compatible with Fabric Loader  
+⛏️ **Mining Configuration**: Hardness, resistance, tool types, mining levels, and per-tool speed overrides  
 🧪 **Built-in Testing**: Automatically generates unit tests and game tests  
 🎨 **Custom Creative Tabs**: Create your own creative inventory tabs  
 📝 **Recipe Support**: Define crafting recipes with JSON  
@@ -121,6 +122,7 @@ Additional example scripts can be found in the [`examples`](examples/) directory
 | `custom_item_group.py` | Custom creative tabs and assigning items to them |
 | `tool_item.py` | Defining and registering a custom `ToolItem` |
 | `loot_table.py` | Loot table patterns: self-drops, fortune, silk touch, entity & chest loot |
+| `mining_blocks.py` | Mining config: hardness, tool types, mining levels, per-tool speeds |
 | `full_mod.py` | Complete mod tying together every library feature |
 
 ## Advanced Features
@@ -204,6 +206,53 @@ zombie_loot = LootTable.entity([
 ])
 mod.registerLootTable("custom_zombie", zombie_loot)
 ```
+
+### Mining Tools & Speeds
+
+Configure how blocks are mined, which tools are required, and per-tool speed overrides:
+
+```python
+# Ore that requires an iron pickaxe
+ruby_ore = fabricpy.Block(
+    id="mymod:ruby_ore",
+    name="Ruby Ore",
+    hardness=3.0,
+    resistance=3.0,
+    tool_type="pickaxe",
+    mining_level="iron",
+    loot_table=fabricpy.LootTable.drops_with_fortune(
+        "mymod:ruby_ore", "mymod:ruby",
+        min_count=1, max_count=3,
+    )
+)
+
+# Block with per-tool speed overrides (pickaxe fast, shovel slower)
+mixed_ore = fabricpy.Block(
+    id="mymod:mixed_ore",
+    name="Mixed Ore",
+    hardness=4.0,
+    resistance=4.0,
+    requires_tool=True,
+    mining_level="stone",
+    mining_speeds={
+        "pickaxe": 8.0,
+        "shovel": 3.0,
+    },
+)
+
+# Tough block that needs a diamond pickaxe
+reinforced = fabricpy.Block(
+    id="mymod:reinforced_block",
+    name="Reinforced Block",
+    hardness=25.0,
+    resistance=600.0,
+    tool_type="pickaxe",
+    mining_level="diamond",
+)
+```
+
+Valid tool types: `"pickaxe"`, `"axe"`, `"shovel"`, `"hoe"`, `"sword"`.
+Valid mining levels: `"stone"`, `"iron"`, `"diamond"`.
 
 ### Testing Integration
 
