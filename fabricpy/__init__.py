@@ -44,9 +44,15 @@ Attributes:
     __all__ (list): List of public API symbols exported by this module.
 """
 
-from . import item_group, message
+from . import actions, item_group, message
 from .__version__ import __version__
-from .block import Block, VALID_MINING_LEVELS, VALID_TOOL_TYPES
+from .block import (
+    Block,
+    HookResult,
+    VALID_MINING_LEVELS,
+    VALID_TOOL_TYPES,
+    _normalize_hook,
+)
 from .fooditem import FoodItem
 from .item import Item
 from .loottable import LootPool, LootTable
@@ -67,6 +73,7 @@ __all__ = [
     "LootPool",
     "VALID_TOOL_TYPES",
     "VALID_MINING_LEVELS",
+    "actions",
     "item_group",
     "message",
     "__version__",

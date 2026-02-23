@@ -10,7 +10,43 @@ Block event hooks supported:
 - **Left click (attack)**: ``AttackBlockCallback`` via :meth:`Block.on_left_click`
 - **Right click (interact)**: ``UseBlockCallback`` via :meth:`Block.on_right_click`
 - **After block break**: ``PlayerBlockBreakEvents.AFTER`` via :meth:`Block.on_break`
+
+Hook methods can return a single action string, a list of action strings, or
+``None``.  Lists are automatically joined with newlines during code generation,
+so there is no need to manually call ``"\\n".join([...])``.
 """
+
+from __future__ import annotations
+
+from typing import Sequence
+
+# ── Hook result type ──────────────────────────────────────────────── #
+
+#: Type alias for values returned by event hooks and accepted by
+#: constructor event parameters.  Hooks may return a single Java code
+#: string, a list/tuple of strings (joined automatically), or ``None``.
+HookResult = str | Sequence[str] | None
+
+
+def _normalize_hook(value: HookResult) -> str | None:
+    """Normalise a hook return value to a single string or ``None``.
+
+    Accepts a plain string, a list/tuple of strings, or ``None``.
+    Lists are joined with newlines; empty sequences become ``None``.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value if value else None
+    if isinstance(value, (list, tuple)):
+        parts = [v for v in value if v is not None]
+        return "\n".join(parts) if parts else None
+    raise TypeError(
+        f"Hook must return str, list[str], or None, got {type(value).__name__}"
+    )
+
+
+# ── Constants ────────────────────────────────────────────────────── #
 
 #: Valid tool types that can be used for ``tool_type`` and
 #: ``mining_speeds`` keys.
@@ -47,9 +83,12 @@ class Block:
             instance, a string constant from item_group module, or None.
             Typically BUILDING_BLOCKS for most blocks.
         left_click_event: Java code to execute when the block is left clicked.
+            Can be a string, a list of strings (joined automatically), or None.
         right_click_event: Java code to execute when the block is right clicked.
+            Can be a string, a list of strings (joined automatically), or None.
         break_event: Java code to execute after the block is broken/destroyed.
             The code runs server-side via ``PlayerBlockBreakEvents.AFTER``.
+            Can be a string, a list of strings (joined automatically), or None.
         loot_table: Loot table definition controlling what the block drops when
             broken. Can be a LootTable instance or None (defaults to dropping
             itself).
@@ -86,9 +125,9 @@ class Block:
         inventory_texture_path (str): Path to the block's inventory texture file.
         recipe (RecipeJson): Recipe definition for crafting this block.
         item_group (ItemGroup | str): Creative tab assignment for the block item.
-        left_click_event (str | None): Java code executed on left click.
-        right_click_event (str | None): Java code executed on right click.
-        break_event (str | None): Java code executed after block is broken.
+        left_click_event (str | list[str] | None): Java code executed on left click.
+        right_click_event (str | list[str] | None): Java code executed on right click.
+        break_event (str | list[str] | None): Java code executed after block is broken.
         loot_table (LootTable | None): Loot table for block drops (defaults to dropping itself).
         hardness (float | None): Block hardness (mining time).
         resistance (float | None): Blast resistance.
@@ -143,9 +182,9 @@ class Block:
         inventory_texture_path: str | None = None,
         recipe: object | None = None,  # instance of RecipeJson or None
         item_group: object | str | None = None,
-        left_click_event: str | None = None,
-        right_click_event: str | None = None,
-        break_event: str | None = None,
+        left_click_event: HookResult = None,
+        right_click_event: HookResult = None,
+        break_event: HookResult = None,
         loot_table: object | None = None,  # instance of LootTable or None
         tool_type: str
         | None = None,  # "pickaxe", "axe", "shovel", "hoe", "sword", or None
@@ -167,10 +206,13 @@ class Block:
             recipe: Recipe definition for crafting this block.
             item_group: Creative tab to place this block's item in.
             left_click_event: Java code to execute when the block is left clicked.
+                Can be a string, a list of strings, or None.
                 Prefer overriding :meth:`on_left_click` in a subclass.
             right_click_event: Java code to execute when the block is right clicked.
+                Can be a string, a list of strings, or None.
                 Prefer overriding :meth:`on_right_click` in a subclass.
             break_event: Java code to execute after the block is broken.
+                Can be a string, a list of strings, or None.
                 Prefer overriding :meth:`on_break` in a subclass.
             loot_table: Loot table for block drops.
             tool_type: Primary tool type for efficient mining.
@@ -235,25 +277,43 @@ class Block:
     def on_left_click(self) -> str | None:  # noqa: D401
         """Java code executed when the block is left clicked.
 
-        Subclasses can override this to return a string of Java statements. The
-        default implementation returns the value of ``left_click_event`` passed
-        to the constructor, enabling both declarative and imperative styles.
-        ``ActionResult.SUCCESS`` is automatically returned, so the string should
-        only contain the statements to run when the block is clicked.
+        Subclasses can override this to return a string of Java statements,
+        a list of strings (joined automatically), or ``None``.  The default
+        implementation returns the value of ``left_click_event`` passed to
+        the constructor.  ``ActionResult.SUCCESS`` is automatically returned,
+        so only include the statements to run when the block is clicked.
+
+        Example::
+
+            def on_left_click(self):
+                return [
+                    drop_item("DIAMOND", count=3),
+                    play_sound("EXPERIENCE_ORB_PICKUP"),
+                    give_xp(25),
+                ]
         """
 
-        return self.left_click_event
+        return _normalize_hook(self.left_click_event)
 
     def on_right_click(self) -> str | None:  # noqa: D401
         """Java code executed when the block is right clicked.
 
-        Subclasses can override this to return a string of Java statements. The
-        default implementation returns ``right_click_event`` from the
-        constructor. ``ActionResult.SUCCESS`` is automatically returned, so only
-        the desired statements should be provided.
+        Subclasses can override this to return a string of Java statements,
+        a list of strings (joined automatically), or ``None``.  The default
+        implementation returns ``right_click_event`` from the constructor.
+        ``ActionResult.SUCCESS`` is automatically returned.
+
+        Example::
+
+            def on_right_click(self):
+                return [
+                    apply_effect("SPEED", 600, 1),
+                    play_sound("WITCH_DRINK"),
+                    send_message("You feel energised!"),
+                ]
         """
 
-        return self.right_click_event
+        return _normalize_hook(self.right_click_event)
 
     def on_break(self) -> str | None:  # noqa: D401
         """Java code executed after the block is broken (destroyed).
@@ -264,9 +324,17 @@ class Block:
         block state **before** breaking), and ``entity`` (the
         ``BlockEntity``, may be ``null``).
 
-        Subclasses can override this to return a string of Java statements.
-        The default implementation returns ``break_event`` from the
-        constructor.
+        Subclasses can override this to return a string of Java statements,
+        a list of strings (joined automatically), or ``None``.  The default
+        implementation returns ``break_event`` from the constructor.
+
+        Example::
+
+            def on_break(self):
+                return [
+                    summon_lightning(),
+                    play_sound("LIGHTNING_BOLT_THUNDER"),
+                ]
         """
 
-        return self.break_event
+        return _normalize_hook(self.break_event)

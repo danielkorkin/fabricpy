@@ -36,16 +36,16 @@ Optional Parameters
 * **max_stack_size**: Maximum stack size for the block item (default: 64)
 * Override :py:meth:`fabricpy.block.Block.on_left_click` or
   :py:meth:`fabricpy.block.Block.on_right_click` in a subclass to run Java code
-  when the block is clicked. Helpers like ``fabricpy.message.send_message`` and
-  ``fabricpy.message.send_action_bar_message`` make it easy to talk with players.
-  The framework appends ``return ActionResult.SUCCESS;`` for you, so your
-  methods should only include the statements to execute.
+  when the block is clicked.  Return a single action string or a **list** of
+  actions — the framework joins them automatically.  Helpers like
+  ``fabricpy.message.send_message`` and ``fabricpy.message.send_action_bar_message``
+  make it easy to talk with players.  The framework appends
+  ``return ActionResult.SUCCESS;`` for you, so your methods should only include
+  the statements to execute.
 * Override :py:meth:`fabricpy.block.Block.on_break` in a subclass (or pass
   ``break_event`` to the constructor) to run Java code **after** the block is
   broken. This fires server-side via Fabric's ``PlayerBlockBreakEvents.AFTER``
-  event. The callback receives ``world``, ``player``, ``pos``, ``state`` (the
-  block state before breaking), and ``entity`` (the ``BlockEntity``, may be
-  ``null``).
+  event.  Hook methods can return a string, a list of strings, or ``None``.
 
 Advanced Block Examples
 -----------------------

@@ -28,6 +28,7 @@ import subprocess
 from collections import defaultdict
 from typing import Dict, List, Set
 
+from .block import _normalize_hook
 from .fooditem import FoodItem
 from .itemgroup import ItemGroup
 from .loottable import LootTable
@@ -139,6 +140,8 @@ class ModConfig:
                 )
         """
         self.mod_id = mod_id
+        # Java identifiers cannot contain hyphens; sanitise for package paths.
+        self._java_mod_id = re.sub(r"[^a-z0-9_]", "_", mod_id)
         self.name = name
         self.description = description
         self.version = version
@@ -328,7 +331,7 @@ class ModConfig:
         )
 
         # 3) items / tabs ------------------------------------------------
-        item_pkg = f"com.example.{self.mod_id}.items"
+        item_pkg = f"com.example.{self._java_mod_id}.items"
         self.create_item_files(self.project_dir, item_pkg)
         self.create_item_group_files(self.project_dir, item_pkg)
         self.update_mod_initializer(self.project_dir, item_pkg)
@@ -342,7 +345,7 @@ class ModConfig:
 
         # 4) blocks ------------------------------------------------------
         if self.registered_blocks:
-            block_pkg = f"com.example.{self.mod_id}.blocks"
+            block_pkg = f"com.example.{self._java_mod_id}.blocks"
             self.create_block_files(self.project_dir, block_pkg)
             self.update_mod_initializer_blocks(self.project_dir, block_pkg)
             self.copy_block_textures_and_generate_models(self.project_dir, self.mod_id)
@@ -1061,7 +1064,7 @@ public class CustomToolItem extends Item {{
         L.append("import net.minecraft.resources.Identifier;")
         L.append("import net.minecraft.network.chat.Component;")
         if blocks_referenced:
-            L.append(f"import com.example.{self.mod_id}.blocks.TutorialBlocks;")
+            L.append(f"import com.example.{self._java_mod_id}.blocks.TutorialBlocks;")
         L.append("\npublic final class TutorialItemGroups {")
         L.append("    private TutorialItemGroups() {}\n")
 
@@ -1404,19 +1407,29 @@ public class CustomToolItem extends Item {{
             isinstance(getattr(b, "item_group", None), str)
             for b in self.registered_blocks
         )
-        left_handlers = {blk: blk.on_left_click() for blk in self.registered_blocks}
-        right_handlers = {blk: blk.on_right_click() for blk in self.registered_blocks}
-        break_handlers = {blk: blk.on_break() for blk in self.registered_blocks}
+        left_handlers = {
+            blk: _normalize_hook(blk.on_left_click()) for blk in self.registered_blocks
+        }
+        right_handlers = {
+            blk: _normalize_hook(blk.on_right_click()) for blk in self.registered_blocks
+        }
+        break_handlers = {
+            blk: _normalize_hook(blk.on_break()) for blk in self.registered_blocks
+        }
         has_left_click = any(left_handlers.values())
         has_right_click = any(right_handlers.values())
         has_break = any(break_handlers.values())
-        needs_text = any(
-            "Component.literal" in ev
+
+        # Collect all event handler code for import detection
+        _all_event_code = "\n".join(
+            ev
             for ev in list(left_handlers.values())
             + list(right_handlers.values())
             + list(break_handlers.values())
             if ev
         )
+        needs_text = "Component.literal" in _all_event_code
+
         L: List[str] = []
         L.append(f"package {pkg};\n")
         L.append("import net.minecraft.world.level.block.Block;")
@@ -1444,6 +1457,35 @@ public class CustomToolItem extends Item {{
             )
         if has_left_click or has_right_click:
             L.append("import net.minecraft.world.InteractionResult;")
+
+        # ── action-specific imports (detected from event handler code) ── #
+        _ACTION_IMPORTS = [
+            (
+                "MobEffectInstance(",
+                "import net.minecraft.world.effect.MobEffectInstance;",
+            ),
+            ("MobEffects.", "import net.minecraft.world.effect.MobEffects;"),
+            ("SoundEvents.", "import net.minecraft.sounds.SoundEvents;"),
+            ("SoundSource.", "import net.minecraft.sounds.SoundSource;"),
+            ("ServerLevel", "import net.minecraft.server.level.ServerLevel;"),
+            ("LightningBolt", "import net.minecraft.world.entity.LightningBolt;"),
+            ("EntityType.", "import net.minecraft.world.entity.EntityType;"),
+            ("new ItemStack(", "import net.minecraft.world.item.ItemStack;"),
+            ("Items.", "import net.minecraft.world.item.Items;"),
+            ("LivingEntity.class", "import net.minecraft.world.entity.LivingEntity;"),
+            ("new AABB(", "import net.minecraft.world.phys.AABB;"),
+            (
+                "ServerTickEvents.",
+                "import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;",
+            ),
+            ("GameEvent.", "import net.minecraft.world.level.gameevent.GameEvent;"),
+        ]
+        for _pattern, _import_stmt in _ACTION_IMPORTS:
+            if _pattern in _all_event_code:
+                L.append(_import_stmt)
+        if has_right_click or "BlockPos " in _all_event_code:
+            L.append("import net.minecraft.core.BlockPos;")
+
         has_mining_speeds = any(
             getattr(b, "mining_speeds", None) for b in self.registered_blocks
         )
@@ -1542,11 +1584,12 @@ public class CustomToolItem extends Item {{
             L.append(
                 "        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {"
             )
+            L.append("            BlockPos pos = hitResult.getBlockPos();")
             for blk, code in right_handlers.items():
                 if code:
                     const = self._to_java_constant(blk.id)
                     L.append(
-                        f"            if (world.getBlockState(hitResult.getBlockPos()).getBlock() == {const}) {{",
+                        f"            if (world.getBlockState(pos).getBlock() == {const}) {{",
                     )
                     for line in code.splitlines():
                         L.append(f"                {line}")
@@ -2081,7 +2124,7 @@ fabric_version=0.141.3+1.21.11
 
     def _generate_item_registration_test(self, test_dir: str):
         """Generate unit test for item registration."""
-        package_name = f"com.example.{self.mod_id}.test"
+        package_name = f"com.example.{self._java_mod_id}.test"
 
         test_content = f"""package {package_name};
 
@@ -2100,7 +2143,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 
-import com.example.{self.mod_id}.items.TutorialItems;
+import com.example.{self._java_mod_id}.items.TutorialItems;
 
 /**
  * Unit tests for item registration and properties.
@@ -2205,7 +2248,7 @@ public class ItemRegistrationTest {{
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = f"com.example.{self.mod_id}.test"
+        package_name = f"com.example.{self._java_mod_id}.test"
 
         test_content = f"""package {package_name};
 
@@ -2311,7 +2354,7 @@ public class RecipeValidationTest {{
         Args:
             test_dir (str): Directory where the test file should be generated.
         """
-        package_name = f"com.example.{self.mod_id}.test"
+        package_name = f"com.example.{self._java_mod_id}.test"
 
         test_content = f"""package {package_name};
 
@@ -2325,7 +2368,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 
-import com.example.{self.mod_id}.items.TutorialItems;
+import com.example.{self._java_mod_id}.items.TutorialItems;
 
 /**
  * Integration tests for complete mod functionality.
@@ -2436,7 +2479,7 @@ public class ModIntegrationTest {{
         gametest_resources = os.path.join(project_dir, "src", "gametest", "resources")
         os.makedirs(gametest_resources, exist_ok=True)
 
-        package_name = f"com.example.{self.mod_id}"
+        package_name = f"com.example.{self._java_mod_id}"
 
         fabric_mod_json = {
             "schemaVersion": 1,
@@ -2468,7 +2511,7 @@ public class ModIntegrationTest {{
 
     def _generate_server_game_test(self, gametest_dir: str):
         """Generate server-side game tests."""
-        package_name = f"com.example.{self.mod_id}"
+        package_name = f"com.example.{self._java_mod_id}"
         class_name = f"{self.mod_id.replace('-', '_').title()}ServerTest"
 
         server_test_content = f"""package {package_name};
@@ -2565,7 +2608,7 @@ public class {class_name} implements FabricGameTest {{
 
     def _generate_client_game_test(self, gametest_dir: str):
         """Generate client-side game tests."""
-        package_name = f"com.example.{self.mod_id}"
+        package_name = f"com.example.{self._java_mod_id}"
         class_name = f"{self.mod_id.replace('-', '_').title()}ClientTest"
 
         client_test_content = f'''package {package_name};

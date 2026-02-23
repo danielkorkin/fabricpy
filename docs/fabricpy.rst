@@ -78,3 +78,11 @@ fabricpy.item\_group module
    :show-inheritance:
    :undoc-members:
    :no-index:
+
+fabricpy.actions module
+-----------------------
+
+.. automodule:: fabricpy.actions
+   :members:
+   :show-inheritance:
+   :undoc-members:
